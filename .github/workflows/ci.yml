@@ -1,0 +1,69 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: Install dependencies
+        run: make contracts-deps
+      - name: Forge fmt check
+        run: cd contracts && forge fmt --check
+      - name: Forge build
+        run: cd contracts && forge build
+      - name: Forge test
+        run: cd contracts && forge test -vvv
+
+  go-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - run: cd signgate && go test ./...
+
+  opa-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: open-policy-agent/setup-opa@v2
+      - run: opa test policy/
+
+  differential-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install contract dependencies
+        run: make contracts-deps
+      - name: Cross-language sessionId + EIP-712 vectors
+        run: |
+          cd contracts && forge test --match-path "test/*Vector.t.sol" -vv
+          cd ../signgate && go test ./internal/session ./internal/eip712 ./internal/policy -run "CrossLanguage|PhysicalVectors"
+          cd ../sdk && npm ci && npm test -- sessionId eip712 receiptHash
+
+  typescript-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: cd sdk && npm ci && npm test

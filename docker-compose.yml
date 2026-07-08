@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: railguard
+      POSTGRES_PASSWORD: railguard
+      POSTGRES_DB: railguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
+      - ./db/migrations/002_watcher.sql:/docker-entrypoint-initdb.d/002_watcher.sql
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    entrypoint: ["anvil"]
+    command: ["--host", "0.0.0.0", "--port", "8545", "--chain-id", "84532"]
+    ports:
+      - "8545:8545"
+
+  signgate:
+    build:
+      context: ./signgate
+    environment:
+      APP_ENV: local
+      ALLOW_NOOP_STORE: "false"
+      HTTP_PORT: 8080
+      POSTGRES_URL: postgres://railguard:railguard@postgres:5432/railguard?sslmode=disable
+      REDIS_ADDR: redis:6379
+      CHAIN_ID: 84532
+      RPC_URL: http://anvil:8545
+      OPA_POLICY_PATH: /app/policy/railguard.rego
+      SIGNGATE_API_KEY: dev-local-signgate-key
+      RAILGUARD_SIGNER_PRIVATE_KEY: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+      RECEIPT_SIGNER_PRIVATE_KEY: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+      ADAPTER_ADDRESS: ${ADAPTER_ADDRESS:-}
+      HOOK_ADDRESS: ${HOOK_ADDRESS:-}
+      WATCHER_ENABLED: "true"
+      WATCHER_START_BLOCK: "0"
+      WATCHER_CONFIRMATION_DEPTH: "0"
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./policy:/app/policy

@@ -1,0 +1,25 @@
+# Dependencies
+contracts/lib/
+contracts/cache/
+contracts/out/
+contracts/broadcast/
+
+# Go
+signgate/bin/
+
+# Node
+sdk/node_modules/
+sdk/dist/
+
+# Env
+.env
+.env.local
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+.DS_Store
