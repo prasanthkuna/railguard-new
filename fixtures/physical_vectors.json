@@ -1,0 +1,220 @@
+[
+  {
+    "name": "valid_single_transfer",
+    "hookAllows": true,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "50000000",
+      "execution": {
+        "allowedTarget": "0x00000000000000000000000000000000000000aa",
+        "selector": "0xa9059cbb",
+        "allowBatch": false,
+        "isBatch": false,
+        "sessionValidNow": true
+      },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_wrong_recipient_policy",
+    "hookAllows": false,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x000000000000000000000000000000000000dead",
+      "amountAtomic": "50000000",
+      "execution": { "selector": "0xa9059cbb", "sessionValidNow": true },
+      "resource": { "method": "POST", "domain": "blocked.vendor", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_over_max_per_transfer",
+    "hookAllows": false,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "200000000",
+      "execution": { "selector": "0xa9059cbb", "sessionValidNow": true },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_over_max_total_spend_intent",
+    "hookAllows": false,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "600000000",
+      "execution": { "selector": "0xa9059cbb", "sessionValidNow": true },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_unknown_agent",
+    "hookAllows": true,
+    "policyInput": {
+      "agentId": "unknown_agent",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "50000000",
+      "execution": { "selector": "0xa9059cbb", "sessionValidNow": true },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_wrong_token",
+    "hookAllows": false,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000bb",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "50000000",
+      "execution": { "allowedTarget": "0x00000000000000000000000000000000000000bb", "selector": "0xa9059cbb", "sessionValidNow": true },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_wrong_chain",
+    "hookAllows": false,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 1,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "50000000",
+      "execution": { "selector": "0xa9059cbb", "sessionValidNow": true },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_sanctions_hit",
+    "hookAllows": false,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "50000000",
+      "execution": { "selector": "0xa9059cbb", "sessionValidNow": true },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": true },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_high_risk_recipient",
+    "hookAllows": false,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "50000000",
+      "execution": { "selector": "0xa9059cbb", "sessionValidNow": true },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 95, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_wrong_target",
+    "hookAllows": false,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "50000000",
+      "execution": {
+        "allowedTarget": "0x00000000000000000000000000000000000000bb",
+        "selector": "0xa9059cbb",
+        "sessionValidNow": true
+      },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_wrong_selector",
+    "hookAllows": false,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "50000000",
+      "execution": { "selector": "0x23b872dd", "sessionValidNow": true },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_batch_when_allow_batch_false",
+    "hookAllows": false,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "50000000",
+      "execution": { "allowBatch": false, "isBatch": true, "selector": "0xa9059cbb", "sessionValidNow": true },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  },
+  {
+    "name": "blocked_session_expired",
+    "hookAllows": false,
+    "policyInput": {
+      "agentId": "agent_support_bot_1",
+      "account": "0x0000000000000000000000000000000000000001",
+      "chainId": 84532,
+      "token": "0x00000000000000000000000000000000000000aa",
+      "recipient": "0x0000000000000000000000000000000000000b01",
+      "amountAtomic": "50000000",
+      "execution": { "selector": "0xa9059cbb", "sessionValidNow": false },
+      "resource": { "method": "POST", "domain": "api.vendor.com", "path": "/v1/report" },
+      "risk": { "recipientRiskScore": 10, "sanctionsHit": false },
+      "limits": { "maxPerTransfer": "100000000", "maxTotalSpend": "500000000" }
+    }
+  }
+]
