@@ -1,6 +1,8 @@
 # Railguard
 
 [![ci](https://github.com/prasanthkuna/railguard-new/actions/workflows/ci.yml/badge.svg)](https://github.com/prasanthkuna/railguard-new/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/prasanthkuna/railguard-new?label=release)](https://github.com/prasanthkuna/railguard-new/releases)
+[![license](https://img.shields.io/github/license/prasanthkuna/railguard-new)](./LICENSE)
 
 Policy-enforced execution safety layer for AI-agent stablecoin payments.
 
