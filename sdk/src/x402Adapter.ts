@@ -1,6 +1,31 @@
+import {
+  X402Guard,
+  defaultDevPolicy,
+  withSpendingPolicy,
+  PolicyViolationError,
+  ReplayDetectedError,
+} from '@x402-guard/middleware';
+import { parseResourceUrl } from '@x402-guard/core';
+export type { AgentPolicyConfig, X402PaymentContext } from '@x402-guard/core';
+export type { PaymentReceipt } from '@x402-guard/middleware';
+
+export {
+  X402Guard,
+  withSpendingPolicy,
+  defaultDevPolicy,
+  PolicyViolationError,
+  ReplayDetectedError,
+  parseResourceUrl,
+};
+
+export function createX402Guard(agentId: string) {
+  return new X402Guard({ policy: defaultDevPolicy(agentId) });
+}
+
+/** @deprecated Use createX402Guard */
 export function x402AdapterStub() {
   return {
-    name: 'railguard-x402-stub',
-    buildPaymentIntent: (input: unknown) => ({ input, protocol: 'x402-stub' }),
+    name: 'railguard-x402-guard',
+    buildPaymentIntent: (input: unknown) => ({ input, protocol: 'x402-guard' }),
   };
 }

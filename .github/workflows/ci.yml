@@ -43,7 +43,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          path: railguard-new
           submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          repository: prasanthkuna/x402-guard
+          path: x402-guard
       - uses: foundry-rs/foundry-toolchain@v1
       - uses: actions/setup-go@v5
         with:
@@ -52,18 +57,28 @@ jobs:
         with:
           node-version: '20'
       - name: Install contract dependencies
-        run: make contracts-deps
+        run: cd railguard-new && make contracts-deps
       - name: Cross-language sessionId + EIP-712 vectors
         run: |
-          cd contracts && forge test --match-path "test/*Vector.t.sol" -vv
+          cd railguard-new/contracts && forge test --match-path "test/*Vector.t.sol" -vv
           cd ../signgate && go test ./internal/session ./internal/eip712 ./internal/policy -run "CrossLanguage|PhysicalVectors"
-          cd ../sdk && npm ci && npm test -- sessionId eip712 receiptHash
+          cd ../../x402-guard && npm ci && npm run build
+          cd ../railguard-new/sdk && npm ci && npm test -- sessionId eip712 receiptHash
 
   typescript-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: railguard-new
+      - uses: actions/checkout@v4
+        with:
+          repository: prasanthkuna/x402-guard
+          path: x402-guard
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: cd sdk && npm ci && npm test
+      - name: Build x402-guard
+        run: cd x402-guard && npm ci && npm run build
+      - name: SDK build and test
+        run: cd railguard-new/sdk && npm ci && npm run build && npm test

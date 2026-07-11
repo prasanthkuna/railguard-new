@@ -3,4 +3,14 @@ export { buildSessionAuthorization, hashReceiptPayload, verifyReceiptHash, verif
 export { deriveSessionId, sessionConfigPhysicalHash } from './sessionId.js';
 export { signSessionKeyUserOp } from './signSessionKeyUserOp.js';
 export { agentkitAdapterStub } from './agentkitAdapter.js';
-export { x402AdapterStub } from './x402Adapter.js';
+export {
+  createX402Guard,
+  x402AdapterStub,
+  X402Guard,
+  withSpendingPolicy,
+  defaultDevPolicy,
+  parseResourceUrl,
+  PolicyViolationError,
+  ReplayDetectedError,
+} from './x402Adapter.js';
+export type { AgentPolicyConfig, X402PaymentContext, PaymentReceipt } from './x402Adapter.js';

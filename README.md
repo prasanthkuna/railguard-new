@@ -15,6 +15,7 @@ Railguard combines:
 - **RailguardSessionValidator** — ERC-4337 session-key validation helper
 - **Go SignGate** — OPA/Rego policy, EIP-712 signing, Redis reservations, Postgres audit trail
 - **TypeScript SDK** — intent builder, sessionId derivation, EIP-712 typed data
+- **[x402-guard](https://github.com/prasanthkuna/x402-guard)** — pre-sign agent payment policy (re-exported from SDK as `createX402Guard()`)
 
 ## V1 scope
 
@@ -153,11 +154,14 @@ Foundry tests cover:
 | Doc | Purpose |
 |-----|---------|
 | [docs/HIRING_PITCH.md](./docs/HIRING_PITCH.md) | One-page hiring narrative |
+| [docs/INTERVIEW_PREP.md](./docs/INTERVIEW_PREP.md) | Interview deep dive, demo script, and code walkthrough |
 | [docs/SECURITY_REVIEW.md](./docs/SECURITY_REVIEW.md) | Reviewer checklist |
 | [docs/TEST_MATRIX.md](./docs/TEST_MATRIX.md) | Threat / test coverage map |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System design |
 | [prd.md](./prd.md) | Product requirements |
 | [trd.md](./trd.md) | Technical requirements |
+
+**Sibling:** [x402-guard](https://github.com/prasanthkuna/x402-guard) — off-chain policy before x402 signature; optional on-chain ceiling via Railguard hook.
 
 ## License
 
