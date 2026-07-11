@@ -28,7 +28,8 @@ contract RailguardSessionValidator is IRailguardSessionValidator {
         if (block.timestamp < session.validAfter) return false;
         if (block.timestamp > session.validUntil) return false;
 
-        address recovered = ECDSA.recover(userOpHash, signature);
+        (address recovered, ECDSA.RecoverError err, ) = ECDSA.tryRecover(userOpHash, signature);
+        if (err != ECDSA.RecoverError.NoError) return false;
         return recovered == session.sessionKey;
     }
 }

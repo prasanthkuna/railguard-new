@@ -21,6 +21,8 @@ type Repository interface {
 	FinalizeUserOp(ctx context.Context, userOpHash, txHash string, blockNumber int64, status string) error
 	SaveReceipt(ctx context.Context, decisionID, intentHash, sessionID, receiptHash string, payload json.RawMessage, signature, signerKeyID string) error
 	GetReceipt(ctx context.Context, decisionID string) (decision, receiptHash, signature string, payload json.RawMessage, err error)
+	GetIntentByHash(ctx context.Context, intentHash string) (agentID, account, token, recipient, amount string, err error)
+	ConsumeAllowDecision(ctx context.Context, decisionID string) (intentHash string, err error)
 	GetReservationIDByUserOp(ctx context.Context, userOpHash string) (string, error)
 	GetWatcherBlockCursor(ctx context.Context) (uint64, error)
 	SetWatcherBlockCursor(ctx context.Context, block uint64) error
@@ -164,9 +166,38 @@ func (s *Store) GetReceipt(ctx context.Context, decisionID string) (string, stri
 	var decision string
 	err = s.pool.QueryRow(ctx, `SELECT decision FROM policy_decisions WHERE decision_id = $1`, decisionID).Scan(&decision)
 	if err != nil {
-		decision = "ALLOW"
+		return "", "", "", nil, fmt.Errorf("decision lookup failed: %w", err)
 	}
 	return decision, receiptHash, signature, payload, nil
+}
+
+func (s *Store) GetIntentByHash(ctx context.Context, intentHash string) (string, string, string, string, string, error) {
+	var agentID, account, token, recipient, amount string
+	err := s.pool.QueryRow(ctx, `
+		SELECT agent_id, account, token, recipient, amount_atomic::text
+		FROM payment_intents
+		WHERE intent_hash = $1
+	`, intentHash).Scan(&agentID, &account, &token, &recipient, &amount)
+	if err != nil {
+		return "", "", "", "", "", fmt.Errorf("intent not found")
+	}
+	return agentID, account, token, recipient, amount, nil
+}
+
+func (s *Store) ConsumeAllowDecision(ctx context.Context, decisionID string) (string, error) {
+	var intentHash string
+	err := s.pool.QueryRow(ctx, `
+		UPDATE policy_decisions
+		SET consumed_at = now()
+		WHERE decision_id = $1
+		  AND decision = 'ALLOW'
+		  AND consumed_at IS NULL
+		RETURNING intent_hash
+	`, decisionID).Scan(&intentHash)
+	if err != nil {
+		return "", fmt.Errorf("allow decision unavailable")
+	}
+	return intentHash, nil
 }
 
 func (s *Store) GetReservationIDByUserOp(ctx context.Context, userOpHash string) (string, error) {
@@ -271,6 +302,12 @@ func (Noop) SaveReceipt(context.Context, string, string, string, string, json.Ra
 }
 func (Noop) GetReceipt(context.Context, string) (string, string, string, json.RawMessage, error) {
 	return "", "", "", nil, fmt.Errorf("receipt not found")
+}
+func (Noop) GetIntentByHash(context.Context, string) (string, string, string, string, string, error) {
+	return "", "", "", "", "", fmt.Errorf("intent not found")
+}
+func (Noop) ConsumeAllowDecision(context.Context, string) (string, error) {
+	return "", fmt.Errorf("allow decision unavailable")
 }
 func (Noop) GetReservationIDByUserOp(context.Context, string) (string, error) {
 	return "", fmt.Errorf("userop not found")

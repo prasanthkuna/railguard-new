@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -17,10 +18,28 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// anvil account #1 private key (public test fixture only).
-const testRailguardSignerKey = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+type allowDecisionStore struct {
+	store.Noop
+}
+
+func (allowDecisionStore) ConsumeAllowDecision(context.Context, string) (string, error) {
+	return "0xintent", nil
+}
+
+func (allowDecisionStore) GetIntentByHash(context.Context, string) (string, string, string, string, string, error) {
+	return "agent_support_bot_1",
+		"0x0000000000000000000000000000000000000001",
+		"0x00000000000000000000000000000000000000aa",
+		"0x0000000000000000000000000000000000000b01",
+		"100000000",
+		nil
+}
 
 func newTestServer(t *testing.T) (*Server, string) {
+	return newTestServerWithStore(t, store.NewNoop())
+}
+
+func newTestServerWithStore(t *testing.T, st store.Repository) (*Server, string) {
 	t.Helper()
 	mr := miniredis.RunT(t)
 	pe, err := policy.New("../../../policy/railguard.rego")
@@ -36,8 +55,11 @@ func newTestServer(t *testing.T) (*Server, string) {
 		SignerKeyID:        "test-signer",
 	}
 	rs := reservation.NewWithClient(redis.NewClient(&redis.Options{Addr: mr.Addr()}))
-	return New(logger.New(), cfg, pe, rs, store.NewNoop()), cfg.APIKey
+	return New(logger.New(), cfg, pe, rs, st), cfg.APIKey
 }
+
+// anvil account #1 private key (public test fixture only).
+const testRailguardSignerKey = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
 
 func withAPIKey(req *http.Request, apiKey string) {
 	req.Header.Set("X-SignGate-API-Key", apiKey)
@@ -45,11 +67,12 @@ func withAPIKey(req *http.Request, apiKey string) {
 }
 
 func TestRegisterSessionHappyPath(t *testing.T) {
-	srv, apiKey := newTestServer(t)
+	srv, apiKey := newTestServerWithStore(t, allowDecisionStore{})
 	router := srv.Router()
 	policyHash := srv.policy.PolicyHash()
 
 	body := map[string]any{
+		"decisionId":       "dec_test_allow",
 		"account":          "0x0000000000000000000000000000000000000001",
 		"agentId":          "agent_support_bot_1",
 		"sessionKey":       "0x0000000000000000000000000000000000000002",

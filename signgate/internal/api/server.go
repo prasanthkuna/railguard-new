@@ -146,6 +146,7 @@ func (s *Server) evaluateIntent(w http.ResponseWriter, r *http.Request) {
 }
 
 type registerSessionReq struct {
+	DecisionID       string `json:"decisionId"`
 	Account          string `json:"account"`
 	AgentID          string `json:"agentId"`
 	SessionKey       string `json:"sessionKey"`
@@ -170,6 +171,40 @@ func (s *Server) registerSession(w http.ResponseWriter, r *http.Request) {
 	var req registerSessionReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if req.DecisionID == "" {
+		http.Error(w, "decisionId required", http.StatusBadRequest)
+		return
+	}
+	intentHash, err := s.store.ConsumeAllowDecision(r.Context(), req.DecisionID)
+	if err != nil {
+		http.Error(w, "decision not consumable", http.StatusForbidden)
+		return
+	}
+	intentAgentID, intentAccount, intentToken, intentRecipient, intentAmount, err := s.store.GetIntentByHash(r.Context(), intentHash)
+	if err != nil {
+		http.Error(w, "intent not found for decision", http.StatusBadRequest)
+		return
+	}
+	if !strings.EqualFold(req.Account, intentAccount) {
+		http.Error(w, "account mismatch with approved intent", http.StatusBadRequest)
+		return
+	}
+	if req.AgentID != "" && req.AgentID != intentAgentID {
+		http.Error(w, "agent mismatch with approved intent", http.StatusBadRequest)
+		return
+	}
+	if !strings.EqualFold(req.Token, intentToken) {
+		http.Error(w, "token mismatch with approved intent", http.StatusBadRequest)
+		return
+	}
+	if !strings.EqualFold(req.AllowedRecipient, intentRecipient) {
+		http.Error(w, "recipient mismatch with approved intent", http.StatusBadRequest)
+		return
+	}
+	if req.MaxPerTransfer != "" && req.MaxPerTransfer != intentAmount {
+		http.Error(w, "maxPerTransfer must match approved intent amount", http.StatusBadRequest)
 		return
 	}
 	if req.AllowedTarget == "" {

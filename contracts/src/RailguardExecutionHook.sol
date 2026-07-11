@@ -11,6 +11,7 @@ import {SessionTypes} from "./libraries/SessionTypes.sol";
 /// @title RailguardExecutionHook
 /// @notice Physical on-chain enforcement boundary for Railguard v1.
 contract RailguardExecutionHook is IRailguardExecutionHook {
+    address public immutable deployer;
     address public adapter;
     bool private _adapterSet;
 
@@ -37,9 +38,12 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
         bool applied;
     }
 
-    constructor() {}
+    constructor() {
+        deployer = msg.sender;
+    }
 
     function setAdapter(address adapter_) external {
+        if (msg.sender != deployer) revert RailguardErrors.Unauthorized();
         if (_adapterSet) revert RailguardErrors.Unauthorized();
         if (adapter_ == address(0)) revert RailguardErrors.ZeroAddress();
         adapter = adapter_;
