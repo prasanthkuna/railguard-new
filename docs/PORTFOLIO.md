@@ -138,7 +138,7 @@ Video script: [VIDEO_SCRIPT_v0.1.md](./VIDEO_SCRIPT_v0.1.md) *(record locally)*
 | [LINKEDIN_THREAD.md](./LINKEDIN_THREAD.md) | Distribution thread |
 | [X_INFOGRAPHIC_ASSET_BRIEF.md](./X_INFOGRAPHIC_ASSET_BRIEF.md) | Design rules for X carousels |
 | [X_IMAGE_MANIFEST.md](./X_IMAGE_MANIFEST.md) | **4–9 images** — minimal X launch |
-| [RAILGUARD_SENSE_DESIGN_LANGUAGE.md](./RAILGUARD_SENSE_DESIGN_LANGUAGE.md) | Blade-inspired tokens + truth states |
+| [GITHUB_PROFILE_SETUP.md](./GITHUB_PROFILE_SETUP.md) | Pin repos + profile bio (2 min) |
 | [REVIEW_REQUESTS.md](./REVIEW_REQUESTS.md) | External review issues |
 | [UPSTREAM_CONTRIBUTION.md](./UPSTREAM_CONTRIBUTION.md) | One upstream PR/comment |
 
