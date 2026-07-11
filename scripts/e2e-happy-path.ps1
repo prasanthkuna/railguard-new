@@ -92,20 +92,11 @@ Write-Host "decisionId=$($eval.decisionId) policyHash=$($eval.policyHash)"
 
 Write-Host "==> 5. Session register (SignGate Railguard cosign)"
 $regBody = @{
-  account = $env:ADAPTER_ADDRESS
-  agentId = "agent_support_bot_1"
+  decisionId = $eval.decisionId
   sessionKey = $SessionKey
-  token = $env:USDC_ADDRESS
-  allowedTarget = $env:USDC_ADDRESS
-  allowedRecipient = $Recipient
-  allowedSelector = "0xa9059cbb"
   nonceKey = $NonceKey
-  maxPerTransfer = "100000000"
-  maxTotalSpend = "500000000"
   validAfter = 1
   validUntil = 9999999999
-  allowBatch = $false
-  policyHash = $eval.policyHash
 } | ConvertTo-Json -Depth 3
 $reg = Invoke-RestMethod -Uri "http://localhost:8080/v1/sessions/register" -Method Post -Body $regBody -ContentType "application/json" -Headers $headers
 if (-not $reg.sessionId -or -not $reg.railguardSignature) {

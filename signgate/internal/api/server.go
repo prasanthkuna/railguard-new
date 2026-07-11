@@ -85,7 +85,7 @@ func (s *Server) evaluateIntent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = s.store.SaveIntent(
+	if err := s.store.SaveIntent(
 		r.Context(),
 		intentHash,
 		req.AgentID,
@@ -96,11 +96,14 @@ func (s *Server) evaluateIntent(w http.ResponseWriter, r *http.Request) {
 		req.AmountAtomic,
 		req.Limits.MaxPerTransfer,
 		req.Limits.MaxTotalSpend,
-		false,
+		req.Limits.AllowBatch,
 		ci.Domain,
 		ci.Path,
 		req.IdempotencyKey,
-	)
+	); err != nil {
+		http.Error(w, "failed to persist intent", http.StatusInternalServerError)
+		return
+	}
 
 	pin := policy.Input{
 		AgentID:      req.AgentID,
@@ -123,7 +126,10 @@ func (s *Server) evaluateIntent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	decisionID := "dec_" + uuid.NewString()
-	_ = s.store.SaveDecision(r.Context(), decisionID, intentHash, pout.Decision, pout.ReasonCodes, pout.PolicyHash)
+	if err := s.store.SaveDecision(r.Context(), decisionID, intentHash, pout.Decision, pout.ReasonCodes, pout.PolicyHash); err != nil {
+		http.Error(w, "failed to persist decision", http.StatusInternalServerError)
+		return
+	}
 
 	if pout.Decision == "ALLOW" && s.cfg.ReceiptSignerKey != "" {
 		signed, err := s.receipt.Sign(receipt.Payload{
@@ -292,6 +298,10 @@ func (s *Server) reserveBudget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.store.SaveReservation(r.Context(), resID, req.SessionID, req.IntentHash, req.AgentID, req.AmountAtomic, "BUDGET_RESERVED", req.IdempotencyKey); err != nil {
+		if existing, getErr := s.store.GetReservationIDByIdempotency(r.Context(), req.IdempotencyKey); getErr == nil && existing == resID {
+			writeJSON(w, http.StatusOK, map[string]string{"reservationId": resID, "status": "RESERVED"})
+			return
+		}
 		_ = s.reservation.ReleaseReservation(r.Context(), resID)
 		http.Error(w, "failed to persist reservation", http.StatusInternalServerError)
 		return

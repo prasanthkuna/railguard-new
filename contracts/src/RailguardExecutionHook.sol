@@ -61,7 +61,14 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
         SessionTypes.SessionConfig memory session = IRailguardAccountAdapter(adapter).getSession(account, nonceKey);
         _requireActiveSession(session);
 
-        bytes32 digest = _executionDigest(account, session.sessionId, nonceKey, mode, executionCalldata, sessionExecutionSeq[account][session.sessionId]);
+        bytes32 digest = _executionDigest(
+            account,
+            session.sessionId,
+            nonceKey,
+            mode,
+            executionCalldata,
+            sessionExecutionSeq[account][session.sessionId]
+        );
         if (usedExecutions[account][digest]) revert RailguardErrors.ExecutionReplayed();
 
         uint256 frameSpend = _validateFrame(session, account, mode, executionCalldata);
@@ -110,7 +117,9 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
         bytes32 mode,
         bytes calldata executionCalldata
     ) external view returns (bytes32) {
-        return _executionDigest(account, sessionId, nonceKey, mode, executionCalldata, sessionExecutionSeq[account][sessionId]);
+        return _executionDigest(
+            account, sessionId, nonceKey, mode, executionCalldata, sessionExecutionSeq[account][sessionId]
+        );
     }
 
     function _executionDigest(

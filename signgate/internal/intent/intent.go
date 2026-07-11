@@ -26,32 +26,39 @@ type EvaluateRequest struct {
 	Limits         struct {
 		MaxPerTransfer string `json:"maxPerTransfer"`
 		MaxTotalSpend  string `json:"maxTotalSpend"`
+		AllowBatch     bool   `json:"allowBatch"`
 	} `json:"limits"`
 }
 
 type CanonicalIntent struct {
-	AgentID      string `json:"agentId"`
-	Account      string `json:"account"`
-	ChainID      int64  `json:"chainId"`
-	Token        string `json:"token"`
-	Recipient    string `json:"recipient"`
-	AmountAtomic string `json:"amountAtomic"`
-	Domain       string `json:"domain"`
-	Path         string `json:"path"`
-	Method       string `json:"method"`
+	AgentID        string `json:"agentId"`
+	Account        string `json:"account"`
+	ChainID        int64  `json:"chainId"`
+	Token          string `json:"token"`
+	Recipient      string `json:"recipient"`
+	AmountAtomic   string `json:"amountAtomic"`
+	Domain         string `json:"domain"`
+	Path           string `json:"path"`
+	Method         string `json:"method"`
+	MaxPerTransfer string `json:"maxPerTransfer"`
+	MaxTotalSpend  string `json:"maxTotalSpend"`
+	AllowBatch     bool   `json:"allowBatch"`
 }
 
 func Canonicalize(req EvaluateRequest) CanonicalIntent {
 	return CanonicalIntent{
-		AgentID:      strings.ToLower(req.AgentID),
-		Account:      strings.ToLower(req.Account),
-		ChainID:      req.ChainID,
-		Token:        strings.ToLower(req.Token),
-		Recipient:    strings.ToLower(req.Recipient),
-		AmountAtomic: req.AmountAtomic,
-		Domain:       strings.ToLower(req.Resource.Domain),
-		Path:         req.Resource.Path,
-		Method:       strings.ToUpper(req.Resource.Method),
+		AgentID:        strings.ToLower(req.AgentID),
+		Account:        strings.ToLower(req.Account),
+		ChainID:        req.ChainID,
+		Token:          strings.ToLower(req.Token),
+		Recipient:      strings.ToLower(req.Recipient),
+		AmountAtomic:   req.AmountAtomic,
+		Domain:         strings.ToLower(req.Resource.Domain),
+		Path:           req.Resource.Path,
+		Method:         strings.ToUpper(req.Resource.Method),
+		MaxPerTransfer: strings.TrimSpace(req.Limits.MaxPerTransfer),
+		MaxTotalSpend:  strings.TrimSpace(req.Limits.MaxTotalSpend),
+		AllowBatch:     req.Limits.AllowBatch,
 	}
 }
 

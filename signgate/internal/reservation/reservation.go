@@ -53,18 +53,40 @@ func reservationMetaKey(reservationID string) string {
 
 func expiryIndexKey() string { return "reserve-expiry" }
 
-// SweepExpired releases reservations whose pre-submit TTL has elapsed (H-05).
+// expiryMember encodes durable release data independent of metadata TTL.
+func expiryMember(reservationID, sessionID, amountAtomic string) string {
+	return reservationID + "|" + sessionID + "|" + amountAtomic
+}
+
+func parseExpiryMember(member string) (reservationID, sessionID, amountAtomic string, ok bool) {
+	parts := strings.SplitN(member, "|", 3)
+	if len(parts) != 3 {
+		return "", "", "", false
+	}
+	return parts[0], parts[1], parts[2], true
+}
+
+// SweepExpired releases reservations whose pre-submit TTL has elapsed (H-01).
 func (s *Service) SweepExpired(ctx context.Context, now time.Time) error {
-	ids, err := s.rdb.ZRangeByScore(ctx, expiryIndexKey(), &redis.ZRangeBy{
+	members, err := s.rdb.ZRangeByScore(ctx, expiryIndexKey(), &redis.ZRangeBy{
 		Min: "0",
 		Max: fmt.Sprintf("%d", now.Unix()),
 	}).Result()
 	if err != nil {
 		return err
 	}
-	for _, reservationID := range ids {
-		_ = s.ReleaseReservation(ctx, reservationID)
-		_ = s.rdb.ZRem(ctx, expiryIndexKey(), reservationID).Err()
+	for _, member := range members {
+		if reservationID, sessionID, amountAtomic, ok := parseExpiryMember(member); ok {
+			if err := s.releaseAmount(ctx, sessionID, amountAtomic); err != nil {
+				return err
+			}
+			_ = s.rdb.Del(ctx, reservationMetaKey(reservationID)).Err()
+		} else if err := s.ReleaseReservation(ctx, member); err != nil {
+			return err
+		}
+		if err := s.rdb.ZRem(ctx, expiryIndexKey(), member).Err(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -125,10 +147,11 @@ func (s *Service) Reserve(ctx context.Context, sessionID, idempotencyKey, amount
 	pipe := s.rdb.TxPipeline()
 	pipe.Set(ctx, sessionKey(sessionID), next.String(), 24*time.Hour)
 	pipe.Set(ctx, idem, reservationID, time.Duration(ttlSec)*time.Second)
-	pipe.Set(ctx, reservationMetaKey(reservationID), sessionID+"|"+amountAtomic, time.Duration(ttlSec)*time.Second)
+	metaTTL := time.Duration(ttlSec*2) * time.Second
+	pipe.Set(ctx, reservationMetaKey(reservationID), sessionID+"|"+amountAtomic, metaTTL)
 	pipe.ZAdd(ctx, expiryIndexKey(), redis.Z{
 		Score:  float64(time.Now().Add(time.Duration(ttlSec) * time.Second).Unix()),
-		Member: reservationID,
+		Member: expiryMember(reservationID, sessionID, amountAtomic),
 	})
 	if _, err := pipe.Exec(ctx); err != nil {
 		return "", err
@@ -139,8 +162,16 @@ func (s *Service) Reserve(ctx context.Context, sessionID, idempotencyKey, amount
 func (s *Service) CommitReservation(ctx context.Context, reservationID string) error {
 	pipe := s.rdb.TxPipeline()
 	pipe.Del(ctx, reservationMetaKey(reservationID))
-	pipe.ZRem(ctx, expiryIndexKey(), reservationID)
-	_, err := pipe.Exec(ctx)
+	members, err := s.rdb.ZRange(ctx, expiryIndexKey(), 0, -1).Result()
+	if err == nil {
+		for _, member := range members {
+			if id, _, _, ok := parseExpiryMember(member); ok && id == reservationID {
+				pipe.ZRem(ctx, expiryIndexKey(), member)
+				break
+			}
+		}
+	}
+	_, err = pipe.Exec(ctx)
 	return err
 }
 
@@ -156,7 +187,25 @@ func (s *Service) ReleaseReservation(ctx context.Context, reservationID string) 
 	if len(parts) != 2 {
 		return fmt.Errorf("invalid reservation metadata")
 	}
-	sessionID, amountAtomic := parts[0], parts[1]
+	if err := s.releaseAmount(ctx, parts[0], parts[1]); err != nil {
+		return err
+	}
+	pipe := s.rdb.TxPipeline()
+	pipe.Del(ctx, reservationMetaKey(reservationID))
+	members, err := s.rdb.ZRange(ctx, expiryIndexKey(), 0, -1).Result()
+	if err == nil {
+		for _, member := range members {
+			if id, _, _, ok := parseExpiryMember(member); ok && id == reservationID {
+				pipe.ZRem(ctx, expiryIndexKey(), member)
+				break
+			}
+		}
+	}
+	_, err = pipe.Exec(ctx)
+	return err
+}
+
+func (s *Service) releaseAmount(ctx context.Context, sessionID, amountAtomic string) error {
 	amount, ok := new(big.Int).SetString(amountAtomic, 10)
 	if !ok {
 		return fmt.Errorf("invalid reserved amount")
@@ -174,7 +223,7 @@ func (s *Service) ReleaseReservation(ctx context.Context, reservationID string) 
 
 	currentStr, err := s.rdb.Get(ctx, sessionKey(sessionID)).Result()
 	if err == redis.Nil {
-		return s.rdb.Del(ctx, reservationMetaKey(reservationID)).Err()
+		return nil
 	}
 	if err != nil {
 		return err
@@ -187,10 +236,5 @@ func (s *Service) ReleaseReservation(ctx context.Context, reservationID string) 
 	if next.Sign() < 0 {
 		next = big.NewInt(0)
 	}
-	pipe := s.rdb.TxPipeline()
-	pipe.Set(ctx, sessionKey(sessionID), next.String(), 24*time.Hour)
-	pipe.Del(ctx, reservationMetaKey(reservationID))
-	pipe.ZRem(ctx, expiryIndexKey(), reservationID)
-	_, err = pipe.Exec(ctx)
-	return err
+	return s.rdb.Set(ctx, sessionKey(sessionID), next.String(), 24*time.Hour).Err()
 }

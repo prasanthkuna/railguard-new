@@ -24,6 +24,7 @@ type Repository interface {
 	GetAllowDecision(ctx context.Context, decisionID string) (intentHash, policyHash string, intent IntentSnapshot, err error)
 	AuthorizeSession(ctx context.Context, in SessionAuthInput, sessionID string, cfg map[string]any) error
 	GetReservationIDByUserOp(ctx context.Context, userOpHash string) (string, error)
+	GetReservationIDByIdempotency(ctx context.Context, idempotencyKey string) (string, error)
 	GetWatcherBlockCursor(ctx context.Context) (uint64, error)
 	SetWatcherBlockCursor(ctx context.Context, block uint64) error
 	RecordChainExecution(ctx context.Context, exec ChainExecution) error
@@ -89,10 +90,7 @@ func (s *Store) SaveIntent(ctx context.Context, intentHash, agentID, account str
 			max_per_transfer, max_total_spend, allow_batch, resource_domain, resource_path, idempotency_key
 		)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-		ON CONFLICT (intent_hash) DO UPDATE SET
-			max_per_transfer = EXCLUDED.max_per_transfer,
-			max_total_spend = EXCLUDED.max_total_spend,
-			allow_batch = EXCLUDED.allow_batch
+		ON CONFLICT (intent_hash) DO NOTHING
 	`, uuid.New(), intentHash, agentID, account, chainID, token, recipient, amount, maxPerTransfer, maxTotalSpend, allowBatch, domain, path, idem)
 	return err
 }
@@ -314,6 +312,15 @@ func (s *Store) GetReservationIDByUserOp(ctx context.Context, userOpHash string)
 	return reservationID, nil
 }
 
+func (s *Store) GetReservationIDByIdempotency(ctx context.Context, idempotencyKey string) (string, error) {
+	var reservationID string
+	err := s.pool.QueryRow(ctx, `SELECT reservation_id FROM budget_reservations WHERE idempotency_key = $1`, idempotencyKey).Scan(&reservationID)
+	if err != nil {
+		return "", fmt.Errorf("reservation not found")
+	}
+	return reservationID, nil
+}
+
 func (s *Store) GetWatcherBlockCursor(ctx context.Context) (uint64, error) {
 	var value string
 	err := s.pool.QueryRow(ctx, `SELECT value FROM watcher_state WHERE key = 'last_block'`).Scan(&value)
@@ -445,6 +452,9 @@ func (Noop) AuthorizeSession(context.Context, SessionAuthInput, string, map[stri
 }
 func (Noop) GetReservationIDByUserOp(context.Context, string) (string, error) {
 	return "", fmt.Errorf("userop not found")
+}
+func (Noop) GetReservationIDByIdempotency(context.Context, string) (string, error) {
+	return "", fmt.Errorf("reservation not found")
 }
 func (Noop) GetWatcherBlockCursor(context.Context) (uint64, error) { return 0, fmt.Errorf("noop") }
 func (Noop) SetWatcherBlockCursor(context.Context, uint64) error   { return nil }
