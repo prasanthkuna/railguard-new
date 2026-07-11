@@ -11,12 +11,16 @@ $body = @{
   token = "0x00000000000000000000000000000000000000aa"
   recipient = "0x0000000000000000000000000000000000000b01"
   amountAtomic = "100000000"
+  limits = @{
+    maxPerTransfer = "100000000"
+    maxTotalSpend = "500000000"
+  }
   resource = @{
     method = "POST"
     domain = "api.vendor.com"
     path = "/v1/report"
   }
-  idempotencyKey = "idem_smoke_1"
+  idempotencyKey = "idem_smoke_" + [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 } | ConvertTo-Json -Depth 5
 
 $eval = Invoke-RestMethod -Uri "http://localhost:8080/v1/intents/evaluate" -Method Post -Body $body -ContentType "application/json"

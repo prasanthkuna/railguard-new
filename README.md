@@ -85,6 +85,12 @@ docker compose up --build
 
 SignGate listens on `http://localhost:8080`.
 
+If Postgres was started before with an older schema, apply migrations:
+
+```powershell
+powershell -File .\scripts\apply-db-migrations.ps1
+```
+
 **Note:** `docker compose up` alone starts infra + SignGate with empty `ADAPTER_ADDRESS` / `HOOK_ADDRESS` until you deploy. That is fine for API smoke (`scripts/e2e-smoke.ps1`), but **not** the canonical chain-ready E2E. For deploy → cosign → on-chain execute → watcher ingestion, run:
 
 ```powershell

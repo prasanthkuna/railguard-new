@@ -4,5 +4,6 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
 Write-Host "==> SignGate smoke (API only)"
+powershell -File "$root\scripts\apply-db-migrations.ps1"
 powershell -File "$root\scripts\smoke-signgate.ps1"
 Write-Host "Smoke E2E passed."

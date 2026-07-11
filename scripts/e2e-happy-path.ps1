@@ -32,11 +32,24 @@ Push-Location $root
 docker compose up -d --force-recreate postgres redis anvil
 Pop-Location
 
-# Fresh Anvil chain — drop stale watcher cursor from prior runs.
+powershell -ExecutionPolicy Bypass -File (Join-Path $root "scripts\apply-db-migrations.ps1")
+
+# Fresh Anvil chain — drop stale watcher cursor and prior E2E rows from prior runs.
 $pg = docker compose -f (Join-Path $root "docker-compose.yml") ps -q postgres
 if ($pg) {
-  docker exec $pg psql -U railguard -d railguard -c "DELETE FROM watcher_state; DELETE FROM chain_executions;" 2>$null | Out-Null
+  docker exec $pg psql -U railguard -d railguard -c @"
+DELETE FROM watcher_state;
+DELETE FROM chain_executions;
+DELETE FROM audit_receipts;
+DELETE FROM budget_reservations;
+DELETE FROM userop_lifecycle;
+DELETE FROM sessions;
+DELETE FROM policy_decisions;
+DELETE FROM payment_intents;
+"@ 2>$null | Out-Null
 }
+
+$e2eIdem = "idem_e2e_canon_" + [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 
 $ready = $false
 for ($i = 0; $i -lt 30; $i++) {
@@ -84,7 +97,7 @@ $evalBody = @{
   amountAtomic = $ExecuteAmount
   limits = @{ maxPerTransfer = "100000000"; maxTotalSpend = "500000000" }
   resource = @{ method = "POST"; domain = "api.vendor.com"; path = "/v1/report" }
-  idempotencyKey = "idem_e2e_canon_1"
+  idempotencyKey = $e2eIdem
 } | ConvertTo-Json -Depth 5
 $eval = Invoke-RestMethod -Uri "http://localhost:8080/v1/intents/evaluate" -Method Post -Body $evalBody -ContentType "application/json"
 if ($eval.decision -ne "ALLOW") { throw "expected ALLOW, got $($eval.decision)" }
@@ -110,7 +123,7 @@ $resBody = @{
   agentId = "agent_support_bot_1"
   intentHash = $eval.intentHash
   amountAtomic = $ExecuteAmount
-  idempotencyKey = "idem_reserve_e2e_1"
+  idempotencyKey = "idem_reserve_$e2eIdem"
   maxTotalSpend = "500000000"
 } | ConvertTo-Json -Depth 3
 $res = Invoke-RestMethod -Uri "http://localhost:8080/v1/reservations/reserve" -Method Post -Body $resBody -ContentType "application/json" -Headers $headers

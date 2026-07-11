@@ -10,6 +10,9 @@ services:
     volumes:
       - ./db/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
       - ./db/migrations/002_watcher.sql:/docker-entrypoint-initdb.d/002_watcher.sql
+      - ./db/migrations/002_policy_decision_consumption.sql:/docker-entrypoint-initdb.d/003_policy_decision_consumption.sql
+      - ./db/migrations/003_intent_limits_and_session_binding.sql:/docker-entrypoint-initdb.d/004_intent_limits_and_session_binding.sql
+      - ./db/migrations/004_execution_digest.sql:/docker-entrypoint-initdb.d/005_execution_digest.sql
 
   redis:
     image: redis:7
