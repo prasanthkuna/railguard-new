@@ -11,12 +11,11 @@ contract ReplayRejectTest is RailguardTestBase {
         _register(false);
     }
 
-    function test_replayed_execution_digest_reverts() public {
+    function test_identical_calldata_allowed_with_monotonic_sequence() public {
         bytes memory execution = _singleExecution(address(usdc), recipient, 10e6);
         vm.prank(sessionKey);
         adapter.executeWithSession(NONCE_KEY, SessionTypes.CALLTYPE_SINGLE, execution);
         vm.prank(sessionKey);
-        vm.expectRevert(RailguardErrors.ExecutionReplayed.selector);
         adapter.executeWithSession(NONCE_KEY, SessionTypes.CALLTYPE_SINGLE, execution);
     }
 }

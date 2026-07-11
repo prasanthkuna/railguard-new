@@ -20,19 +20,24 @@ import (
 
 type allowDecisionStore struct {
 	store.Noop
+	policyHash string
 }
 
-func (allowDecisionStore) ConsumeAllowDecision(context.Context, string) (string, error) {
-	return "0xintent", nil
+func (s allowDecisionStore) GetAllowDecision(context.Context, string) (string, string, store.IntentSnapshot, error) {
+	return "0xintent", s.policyHash, store.IntentSnapshot{
+		AgentID:        "agent_support_bot_1",
+		Account:        "0x0000000000000000000000000000000000000001",
+		Token:          "0x00000000000000000000000000000000000000aa",
+		Recipient:      "0x0000000000000000000000000000000000000b01",
+		AmountAtomic:   "100000000",
+		MaxPerTransfer: "100000000",
+		MaxTotalSpend:  "500000000",
+		AllowBatch:     false,
+	}, nil
 }
 
-func (allowDecisionStore) GetIntentByHash(context.Context, string) (string, string, string, string, string, error) {
-	return "agent_support_bot_1",
-		"0x0000000000000000000000000000000000000001",
-		"0x00000000000000000000000000000000000000aa",
-		"0x0000000000000000000000000000000000000b01",
-		"100000000",
-		nil
+func (allowDecisionStore) AuthorizeSession(context.Context, store.SessionAuthInput, string, map[string]any) error {
+	return nil
 }
 
 func newTestServer(t *testing.T) (*Server, string) {
@@ -67,26 +72,30 @@ func withAPIKey(req *http.Request, apiKey string) {
 }
 
 func TestRegisterSessionHappyPath(t *testing.T) {
-	srv, apiKey := newTestServerWithStore(t, allowDecisionStore{})
+	mr := miniredis.RunT(t)
+	pe, err := policy.New("../../../policy/railguard.rego")
+	if err != nil {
+		t.Fatalf("policy: %v", err)
+	}
+	cfg := config.Config{
+		AppEnv:             "local",
+		APIKey:             "test-api-key",
+		ChainID:            84532,
+		AdapterAddress:     "0x00000000000000000000000000000000000000c0",
+		RailguardSignerKey: testRailguardSignerKey,
+		SignerKeyID:        "test-signer",
+	}
+	rs := reservation.NewWithClient(redis.NewClient(&redis.Options{Addr: mr.Addr()}))
+	srv := New(logger.New(), cfg, pe, rs, allowDecisionStore{policyHash: pe.PolicyHash()})
+	apiKey := cfg.APIKey
 	router := srv.Router()
-	policyHash := srv.policy.PolicyHash()
 
 	body := map[string]any{
-		"decisionId":       "dec_test_allow",
-		"account":          "0x0000000000000000000000000000000000000001",
-		"agentId":          "agent_support_bot_1",
-		"sessionKey":       "0x0000000000000000000000000000000000000002",
-		"token":            "0x00000000000000000000000000000000000000aa",
-		"allowedTarget":    "0x00000000000000000000000000000000000000aa",
-		"allowedRecipient": "0x0000000000000000000000000000000000000b01",
-		"allowedSelector":  "0xa9059cbb",
-		"nonceKey":         "12345",
-		"maxPerTransfer":   "100000000",
-		"maxTotalSpend":    "500000000",
-		"validAfter":       1,
-		"validUntil":       9999999999,
-		"allowBatch":       false,
-		"policyHash":       policyHash,
+		"decisionId": "dec_test_allow",
+		"sessionKey": "0x0000000000000000000000000000000000000002",
+		"nonceKey":   "12345",
+		"validAfter": 1,
+		"validUntil": 9999999999,
 	}
 	b, _ := json.Marshal(body)
 	req := httptest.NewRequest(http.MethodPost, "/v1/sessions/register", bytes.NewReader(b))
@@ -109,24 +118,19 @@ func TestRegisterSessionPolicyHashMismatch(t *testing.T) {
 	srv, apiKey := newTestServer(t)
 	router := srv.Router()
 	body := map[string]any{
-		"account":          "0x0000000000000000000000000000000000000001",
-		"sessionKey":       "0x0000000000000000000000000000000000000002",
-		"token":            "0x00000000000000000000000000000000000000aa",
-		"allowedRecipient": "0x0000000000000000000000000000000000000b01",
-		"nonceKey":         "12345",
-		"maxPerTransfer":   "100000000",
-		"maxTotalSpend":    "500000000",
-		"validAfter":       1,
-		"validUntil":       9999999999,
-		"policyHash":       "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+		"decisionId": "dec_missing",
+		"sessionKey": "0x0000000000000000000000000000000000000002",
+		"nonceKey":   "12345",
+		"validAfter": 1,
+		"validUntil": 9999999999,
 	}
 	b, _ := json.Marshal(body)
 	req := httptest.NewRequest(http.MethodPost, "/v1/sessions/register", bytes.NewReader(b))
 	withAPIKey(req, apiKey)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 
 // Repository is the persistence surface used by SignGate API handlers.
 type Repository interface {
-	SaveIntent(ctx context.Context, intentHash, agentID, account string, chainID int64, token, recipient, amount, domain, path, idem string) error
+	SaveIntent(ctx context.Context, intentHash, agentID, account string, chainID int64, token, recipient, amount, maxPerTransfer, maxTotalSpend string, allowBatch bool, domain, path, idem string) error
 	SaveDecision(ctx context.Context, decisionID, intentHash, decision string, reasonCodes []string, policyHash string) error
 	SaveSessionDraft(ctx context.Context, sessionID string, cfg map[string]any, status string) error
 	SaveReservation(ctx context.Context, reservationID, sessionID, intentHash, agentID, amount, status, idem string) error
@@ -21,8 +21,8 @@ type Repository interface {
 	FinalizeUserOp(ctx context.Context, userOpHash, txHash string, blockNumber int64, status string) error
 	SaveReceipt(ctx context.Context, decisionID, intentHash, sessionID, receiptHash string, payload json.RawMessage, signature, signerKeyID string) error
 	GetReceipt(ctx context.Context, decisionID string) (decision, receiptHash, signature string, payload json.RawMessage, err error)
-	GetIntentByHash(ctx context.Context, intentHash string) (agentID, account, token, recipient, amount string, err error)
-	ConsumeAllowDecision(ctx context.Context, decisionID string) (intentHash string, err error)
+	GetAllowDecision(ctx context.Context, decisionID string) (intentHash, policyHash string, intent IntentSnapshot, err error)
+	AuthorizeSession(ctx context.Context, in SessionAuthInput, sessionID string, cfg map[string]any) error
 	GetReservationIDByUserOp(ctx context.Context, userOpHash string) (string, error)
 	GetWatcherBlockCursor(ctx context.Context) (uint64, error)
 	SetWatcherBlockCursor(ctx context.Context, block uint64) error
@@ -41,6 +41,25 @@ type ChainExecution struct {
 	BlockNumber     int64
 	TxHash          string
 	LogIndex        int
+}
+
+type IntentSnapshot struct {
+	AgentID         string
+	Account         string
+	Token           string
+	Recipient       string
+	AmountAtomic    string
+	MaxPerTransfer  string
+	MaxTotalSpend   string
+	AllowBatch      bool
+}
+
+type SessionAuthInput struct {
+	DecisionID string
+	SessionKey string
+	NonceKey   string
+	ValidAfter int64
+	ValidUntil int64
 }
 
 type Store struct {
@@ -62,12 +81,18 @@ func (s *Store) Close() {
 	s.pool.Close()
 }
 
-func (s *Store) SaveIntent(ctx context.Context, intentHash, agentID, account string, chainID int64, token, recipient, amount, domain, path, idem string) error {
+func (s *Store) SaveIntent(ctx context.Context, intentHash, agentID, account string, chainID int64, token, recipient, amount, maxPerTransfer, maxTotalSpend string, allowBatch bool, domain, path, idem string) error {
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO payment_intents (id, intent_hash, agent_id, account, chain_id, token, recipient, amount_atomic, resource_domain, resource_path, idempotency_key)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-		ON CONFLICT (intent_hash) DO NOTHING
-	`, uuid.New(), intentHash, agentID, account, chainID, token, recipient, amount, domain, path, idem)
+		INSERT INTO payment_intents (
+			id, intent_hash, agent_id, account, chain_id, token, recipient, amount_atomic,
+			max_per_transfer, max_total_spend, allow_batch, resource_domain, resource_path, idempotency_key
+		)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+		ON CONFLICT (intent_hash) DO UPDATE SET
+			max_per_transfer = EXCLUDED.max_per_transfer,
+			max_total_spend = EXCLUDED.max_total_spend,
+			allow_batch = EXCLUDED.allow_batch
+	`, uuid.New(), intentHash, agentID, account, chainID, token, recipient, amount, maxPerTransfer, maxTotalSpend, allowBatch, domain, path, idem)
 	return err
 }
 
@@ -171,33 +196,112 @@ func (s *Store) GetReceipt(ctx context.Context, decisionID string) (string, stri
 	return decision, receiptHash, signature, payload, nil
 }
 
-func (s *Store) GetIntentByHash(ctx context.Context, intentHash string) (string, string, string, string, string, error) {
-	var agentID, account, token, recipient, amount string
+func (s *Store) GetAllowDecision(ctx context.Context, decisionID string) (string, string, IntentSnapshot, error) {
+	var intentHash, policyHash, decision string
 	err := s.pool.QueryRow(ctx, `
-		SELECT agent_id, account, token, recipient, amount_atomic::text
+		SELECT intent_hash, policy_hash, decision
+		FROM policy_decisions
+		WHERE decision_id = $1
+	`, decisionID).Scan(&intentHash, &policyHash, &decision)
+	if err != nil {
+		return "", "", IntentSnapshot{}, fmt.Errorf("decision not found")
+	}
+	if decision != "ALLOW" {
+		return "", "", IntentSnapshot{}, fmt.Errorf("decision is not ALLOW")
+	}
+
+	var snap IntentSnapshot
+	var allowBatch bool
+	err = s.pool.QueryRow(ctx, `
+		SELECT agent_id, account, token, recipient, amount_atomic::text,
+		       COALESCE(max_per_transfer, amount_atomic)::text,
+		       COALESCE(max_total_spend, amount_atomic)::text,
+		       COALESCE(allow_batch, false)
 		FROM payment_intents
 		WHERE intent_hash = $1
-	`, intentHash).Scan(&agentID, &account, &token, &recipient, &amount)
+	`, intentHash).Scan(
+		&snap.AgentID, &snap.Account, &snap.Token, &snap.Recipient, &snap.AmountAtomic,
+		&snap.MaxPerTransfer, &snap.MaxTotalSpend, &allowBatch,
+	)
 	if err != nil {
-		return "", "", "", "", "", fmt.Errorf("intent not found")
+		return "", "", IntentSnapshot{}, fmt.Errorf("intent not found for decision")
 	}
-	return agentID, account, token, recipient, amount, nil
+	snap.AllowBatch = allowBatch
+	return intentHash, policyHash, snap, nil
 }
 
-func (s *Store) ConsumeAllowDecision(ctx context.Context, decisionID string) (string, error) {
-	var intentHash string
-	err := s.pool.QueryRow(ctx, `
-		UPDATE policy_decisions
-		SET consumed_at = now()
-		WHERE decision_id = $1
-		  AND decision = 'ALLOW'
-		  AND consumed_at IS NULL
-		RETURNING intent_hash
-	`, decisionID).Scan(&intentHash)
+func (s *Store) AuthorizeSession(ctx context.Context, in SessionAuthInput, sessionID string, cfg map[string]any) error {
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return "", fmt.Errorf("allow decision unavailable")
+		return err
 	}
-	return intentHash, nil
+	defer tx.Rollback(ctx)
+
+	var consumedAt *time.Time
+	var consumedSessionID *string
+	var decision string
+	err = tx.QueryRow(ctx, `
+		SELECT decision, consumed_at, consumed_session_id
+		FROM policy_decisions
+		WHERE decision_id = $1
+		FOR UPDATE
+	`, in.DecisionID).Scan(&decision, &consumedAt, &consumedSessionID)
+	if err != nil {
+		return fmt.Errorf("decision not found")
+	}
+	if decision != "ALLOW" {
+		return fmt.Errorf("decision is not ALLOW")
+	}
+	if consumedAt != nil {
+		if consumedSessionID != nil && *consumedSessionID == sessionID {
+			return tx.Commit(ctx)
+		}
+		return fmt.Errorf("decision already consumed")
+	}
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE policy_decisions
+		SET consumed_at = now(), consumed_session_id = $2
+		WHERE decision_id = $1 AND consumed_at IS NULL
+	`, in.DecisionID, sessionID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("decision already consumed")
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO sessions (
+			id, session_id, account, agent_id, session_key, token, allowed_target, allowed_recipient,
+			allowed_selector, nonce_key, max_per_transfer, max_total_spend, valid_after, valid_until,
+			allow_batch, policy_hash, status
+		)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+		ON CONFLICT (session_id) DO NOTHING
+	`,
+		uuid.New(),
+		sessionID,
+		cfg["account"],
+		cfg["agentId"],
+		cfg["sessionKey"],
+		cfg["token"],
+		cfg["allowedTarget"],
+		cfg["allowedRecipient"],
+		cfg["allowedSelector"],
+		cfg["nonceKey"],
+		cfg["maxPerTransfer"],
+		cfg["maxTotalSpend"],
+		cfg["validAfter"],
+		cfg["validUntil"],
+		cfg["allowBatch"],
+		cfg["policyHash"],
+		"SESSION_AUTHORIZED",
+	)
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (s *Store) GetReservationIDByUserOp(ctx context.Context, userOpHash string) (string, error) {
@@ -282,7 +386,7 @@ type Noop struct{}
 
 func NewNoop() Noop { return Noop{} }
 
-func (Noop) SaveIntent(context.Context, string, string, string, int64, string, string, string, string, string, string) error {
+func (Noop) SaveIntent(context.Context, string, string, string, int64, string, string, string, string, string, bool, string, string, string) error {
 	return nil
 }
 func (Noop) SaveDecision(context.Context, string, string, string, []string, string) error { return nil }
@@ -303,11 +407,11 @@ func (Noop) SaveReceipt(context.Context, string, string, string, string, json.Ra
 func (Noop) GetReceipt(context.Context, string) (string, string, string, json.RawMessage, error) {
 	return "", "", "", nil, fmt.Errorf("receipt not found")
 }
-func (Noop) GetIntentByHash(context.Context, string) (string, string, string, string, string, error) {
-	return "", "", "", "", "", fmt.Errorf("intent not found")
+func (Noop) GetAllowDecision(context.Context, string) (string, string, IntentSnapshot, error) {
+	return "", "", IntentSnapshot{}, fmt.Errorf("decision not found")
 }
-func (Noop) ConsumeAllowDecision(context.Context, string) (string, error) {
-	return "", fmt.Errorf("allow decision unavailable")
+func (Noop) AuthorizeSession(context.Context, SessionAuthInput, string, map[string]any) error {
+	return fmt.Errorf("decision not found")
 }
 func (Noop) GetReservationIDByUserOp(context.Context, string) (string, error) {
 	return "", fmt.Errorf("userop not found")

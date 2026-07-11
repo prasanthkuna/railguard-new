@@ -85,7 +85,22 @@ func (s *Server) evaluateIntent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = s.store.SaveIntent(r.Context(), intentHash, req.AgentID, req.Account, req.ChainID, req.Token, req.Recipient, req.AmountAtomic, ci.Domain, ci.Path, req.IdempotencyKey)
+	_ = s.store.SaveIntent(
+		r.Context(),
+		intentHash,
+		req.AgentID,
+		req.Account,
+		req.ChainID,
+		req.Token,
+		req.Recipient,
+		req.AmountAtomic,
+		req.Limits.MaxPerTransfer,
+		req.Limits.MaxTotalSpend,
+		false,
+		ci.Domain,
+		ci.Path,
+		req.IdempotencyKey,
+	)
 
 	pin := policy.Input{
 		AgentID:      req.AgentID,
@@ -146,21 +161,11 @@ func (s *Server) evaluateIntent(w http.ResponseWriter, r *http.Request) {
 }
 
 type registerSessionReq struct {
-	DecisionID       string `json:"decisionId"`
-	Account          string `json:"account"`
-	AgentID          string `json:"agentId"`
-	SessionKey       string `json:"sessionKey"`
-	Token            string `json:"token"`
-	AllowedTarget    string `json:"allowedTarget"`
-	AllowedRecipient string `json:"allowedRecipient"`
-	AllowedSelector  string `json:"allowedSelector"`
-	NonceKey         string `json:"nonceKey"`
-	MaxPerTransfer   string `json:"maxPerTransfer"`
-	MaxTotalSpend    string `json:"maxTotalSpend"`
-	ValidAfter       int64  `json:"validAfter"`
-	ValidUntil       int64  `json:"validUntil"`
-	AllowBatch       bool   `json:"allowBatch"`
-	PolicyHash       string `json:"policyHash"`
+	DecisionID string `json:"decisionId"`
+	SessionKey string `json:"sessionKey"`
+	NonceKey   string `json:"nonceKey"`
+	ValidAfter int64  `json:"validAfter"`
+	ValidUntil int64  `json:"validUntil"`
 }
 
 func (s *Server) registerSession(w http.ResponseWriter, r *http.Request) {
@@ -173,68 +178,39 @@ func (s *Server) registerSession(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	if req.DecisionID == "" {
-		http.Error(w, "decisionId required", http.StatusBadRequest)
+	if req.DecisionID == "" || req.SessionKey == "" || req.NonceKey == "" {
+		http.Error(w, "decisionId, sessionKey, and nonceKey are required", http.StatusBadRequest)
 		return
 	}
-	intentHash, err := s.store.ConsumeAllowDecision(r.Context(), req.DecisionID)
-	if err != nil {
-		http.Error(w, "decision not consumable", http.StatusForbidden)
+	if req.ValidAfter <= 0 || req.ValidUntil <= req.ValidAfter {
+		http.Error(w, "validAfter and validUntil are required", http.StatusBadRequest)
 		return
-	}
-	intentAgentID, intentAccount, intentToken, intentRecipient, intentAmount, err := s.store.GetIntentByHash(r.Context(), intentHash)
-	if err != nil {
-		http.Error(w, "intent not found for decision", http.StatusBadRequest)
-		return
-	}
-	if !strings.EqualFold(req.Account, intentAccount) {
-		http.Error(w, "account mismatch with approved intent", http.StatusBadRequest)
-		return
-	}
-	if req.AgentID != "" && req.AgentID != intentAgentID {
-		http.Error(w, "agent mismatch with approved intent", http.StatusBadRequest)
-		return
-	}
-	if !strings.EqualFold(req.Token, intentToken) {
-		http.Error(w, "token mismatch with approved intent", http.StatusBadRequest)
-		return
-	}
-	if !strings.EqualFold(req.AllowedRecipient, intentRecipient) {
-		http.Error(w, "recipient mismatch with approved intent", http.StatusBadRequest)
-		return
-	}
-	if req.MaxPerTransfer != "" && req.MaxPerTransfer != intentAmount {
-		http.Error(w, "maxPerTransfer must match approved intent amount", http.StatusBadRequest)
-		return
-	}
-	if req.AllowedTarget == "" {
-		req.AllowedTarget = req.Token
-	}
-	if req.AllowedSelector == "" {
-		req.AllowedSelector = "0xa9059cbb"
 	}
 
-	if req.PolicyHash == "" {
-		req.PolicyHash = s.policy.PolicyHash()
-	} else if !strings.EqualFold(req.PolicyHash, s.policy.PolicyHash()) {
+	_, policyHash, intent, err := s.store.GetAllowDecision(r.Context(), req.DecisionID)
+	if err != nil {
+		http.Error(w, "decision not authorizable", http.StatusForbidden)
+		return
+	}
+	if !strings.EqualFold(policyHash, s.policy.PolicyHash()) {
 		http.Error(w, "policyHash mismatch", http.StatusBadRequest)
 		return
 	}
 
 	cfg := session.Config{
-		Account:          req.Account,
+		Account:          intent.Account,
 		NonceKey:         req.NonceKey,
 		SessionKey:       req.SessionKey,
-		Token:            req.Token,
-		AllowedTarget:    req.AllowedTarget,
-		AllowedRecipient: req.AllowedRecipient,
-		AllowedSelector:  req.AllowedSelector,
-		MaxPerTransfer:   req.MaxPerTransfer,
-		MaxTotalSpend:    req.MaxTotalSpend,
+		Token:            intent.Token,
+		AllowedTarget:    intent.Token,
+		AllowedRecipient: intent.Recipient,
+		AllowedSelector:  "0xa9059cbb",
+		MaxPerTransfer:   intent.MaxPerTransfer,
+		MaxTotalSpend:    intent.MaxTotalSpend,
 		ValidAfter:       req.ValidAfter,
 		ValidUntil:       req.ValidUntil,
-		AllowBatch:       req.AllowBatch,
-		PolicyHash:       req.PolicyHash,
+		AllowBatch:       intent.AllowBatch,
+		PolicyHash:       policyHash,
 		ChainID:          s.cfg.ChainID,
 		AdapterAddress:   s.cfg.AdapterAddress,
 	}
@@ -254,13 +230,23 @@ func (s *Server) registerSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = s.store.SaveSessionDraft(r.Context(), sessionID.Hex(), map[string]any{
-		"account": req.Account, "agentId": req.AgentID, "sessionKey": req.SessionKey,
-		"token": req.Token, "allowedTarget": req.AllowedTarget, "allowedRecipient": req.AllowedRecipient,
-		"allowedSelector": req.AllowedSelector, "nonceKey": req.NonceKey, "maxPerTransfer": req.MaxPerTransfer,
-		"maxTotalSpend": req.MaxTotalSpend, "validAfter": req.ValidAfter, "validUntil": req.ValidUntil,
-		"allowBatch": req.AllowBatch, "policyHash": req.PolicyHash,
-	}, "SESSION_DRAFTED")
+	sessionCfg := map[string]any{
+		"account": cfg.Account, "agentId": intent.AgentID, "sessionKey": cfg.SessionKey,
+		"token": cfg.Token, "allowedTarget": cfg.AllowedTarget, "allowedRecipient": cfg.AllowedRecipient,
+		"allowedSelector": cfg.AllowedSelector, "nonceKey": cfg.NonceKey, "maxPerTransfer": cfg.MaxPerTransfer,
+		"maxTotalSpend": cfg.MaxTotalSpend, "validAfter": cfg.ValidAfter, "validUntil": cfg.ValidUntil,
+		"allowBatch": cfg.AllowBatch, "policyHash": cfg.PolicyHash,
+	}
+	if err := s.store.AuthorizeSession(r.Context(), store.SessionAuthInput{
+		DecisionID: req.DecisionID,
+		SessionKey: req.SessionKey,
+		NonceKey:   req.NonceKey,
+		ValidAfter: req.ValidAfter,
+		ValidUntil: req.ValidUntil,
+	}, sessionID.Hex(), sessionCfg); err != nil {
+		http.Error(w, "session authorization failed", http.StatusConflict)
+		return
+	}
 
 	writeJSON(w, http.StatusOK, map[string]string{
 		"sessionId":                 sessionID.Hex(),

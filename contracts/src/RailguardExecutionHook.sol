@@ -17,6 +17,7 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
 
     mapping(address account => mapping(bytes32 sessionId => uint256 spent)) public sessionSpend;
     mapping(address account => mapping(bytes32 digest => bool used)) public usedExecutions;
+    mapping(address account => mapping(bytes32 sessionId => uint256 nextExecutionSeq)) public sessionExecutionSeq;
 
     event ExecutionAllowed(
         address indexed account,
@@ -33,6 +34,7 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
         bytes32 sessionId;
         uint192 nonceKey;
         bytes32 executionDigest;
+        uint256 executionSeq;
         uint256 frameSpend;
         uint256 maxTotalSpend;
         bool applied;
@@ -59,7 +61,7 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
         SessionTypes.SessionConfig memory session = IRailguardAccountAdapter(adapter).getSession(account, nonceKey);
         _requireActiveSession(session);
 
-        bytes32 digest = _executionDigest(account, session.sessionId, nonceKey, mode, executionCalldata);
+        bytes32 digest = _executionDigest(account, session.sessionId, nonceKey, mode, executionCalldata, sessionExecutionSeq[account][session.sessionId]);
         if (usedExecutions[account][digest]) revert RailguardErrors.ExecutionReplayed();
 
         uint256 frameSpend = _validateFrame(session, account, mode, executionCalldata);
@@ -76,6 +78,7 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
                 sessionId: session.sessionId,
                 nonceKey: nonceKey,
                 executionDigest: digest,
+                executionSeq: sessionExecutionSeq[account][session.sessionId],
                 frameSpend: frameSpend,
                 maxTotalSpend: session.maxTotalSpend,
                 applied: false
@@ -95,6 +98,7 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
 
         sessionSpend[ctx.account][ctx.sessionId] = newSpend;
         usedExecutions[ctx.account][ctx.executionDigest] = true;
+        sessionExecutionSeq[ctx.account][ctx.sessionId] = ctx.executionSeq + 1;
 
         emit ExecutionAllowed(ctx.account, ctx.sessionId, ctx.nonceKey, ctx.frameSpend, newSpend);
     }
@@ -106,7 +110,7 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
         bytes32 mode,
         bytes calldata executionCalldata
     ) external view returns (bytes32) {
-        return _executionDigest(account, sessionId, nonceKey, mode, executionCalldata);
+        return _executionDigest(account, sessionId, nonceKey, mode, executionCalldata, sessionExecutionSeq[account][sessionId]);
     }
 
     function _executionDigest(
@@ -114,10 +118,20 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
         bytes32 sessionId,
         uint192 nonceKey,
         bytes32 mode,
-        bytes calldata executionCalldata
+        bytes calldata executionCalldata,
+        uint256 executionSeq
     ) internal view returns (bytes32) {
         return keccak256(
-            abi.encode(block.chainid, address(this), account, sessionId, nonceKey, mode, keccak256(executionCalldata))
+            abi.encode(
+                block.chainid,
+                address(this),
+                account,
+                sessionId,
+                nonceKey,
+                executionSeq,
+                mode,
+                keccak256(executionCalldata)
+            )
         );
     }
 
