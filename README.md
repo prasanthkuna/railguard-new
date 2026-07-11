@@ -6,7 +6,33 @@
 
 Policy-enforced execution safety layer for AI-agent stablecoin payments.
 
-> **Reviewer quick path (≈10 min):** `make test` → skim [docs/SECURITY_REVIEW.md](./docs/SECURITY_REVIEW.md) → run `scripts/e2e-happy-path.ps1` for canonical on-chain proof.
+> **Start here:** [docs/PORTFOLIO.md](./docs/PORTFOLIO.md) — one-page story across all three repos, source-of-truth table, 5-minute demo, known limitations.
+
+> **Reviewer quick path (≈10 min):** `make test` → [docs/FAILURE_MODES_FIXED.md](./docs/FAILURE_MODES_FIXED.md) → `scripts/e2e-happy-path.ps1`
+
+## Three-repo stack
+
+| Repo | Role |
+|------|------|
+| **[railguard-new](https://github.com/prasanthkuna/railguard-new)** (this repo) | SignGate, Solidity hook/adapter, SDK, watcher |
+| **[x402-guard](https://github.com/prasanthkuna/x402-guard)** | Pre-sign agent payment policy (caps, replay, rolling budgets) |
+| **[railguard-cdp](https://github.com/prasanthkuna/railguard-cdp)** | Invoice product, CDP execution, approvals, reconciler |
+
+**Invariant:** `Intent → Policy → Session → Signature → Hook → Receipt → Reconcile`
+
+CDP proves invoice/payment workflow; the hook proves smart-account enforcement. v0.1 connects them via shared policy/audit primitives — see [PORTFOLIO.md](./docs/PORTFOLIO.md#cdp-path-vs-hook-path).
+
+## Source of truth
+
+| Question | Authority |
+|----------|-----------|
+| x402 payment allowed? | `x402-guard` `authorizePayment` store |
+| On-chain spend allowed? | Execution hook + session config |
+| CDP broadcast happened? | `broadcastedTxHash` |
+| Transfer succeeded? | Receipt `status === success` |
+| Audit trail? | Hash-chained events + signed receipts |
+| Ambiguous payment UI? | `submitted` / `unknown` until reconciler runs |
+| Reservation ↔ execution? | `executionDigest` |
 
 Railguard combines:
 
@@ -159,15 +185,22 @@ Foundry tests cover:
 
 | Doc | Purpose |
 |-----|---------|
+| [docs/PORTFOLIO.md](./docs/PORTFOLIO.md) | **Front door** — three-repo story, demo, limitations |
+| [docs/FAILURE_MODES_FIXED.md](./docs/FAILURE_MODES_FIXED.md) | Audit findings → fixes → proof commands |
+| [docs/THREE_PROJECT_SYSTEM_DIAGRAM.md](./docs/THREE_PROJECT_SYSTEM_DIAGRAM.md) | Master architecture Mermaid diagram |
+| [docs/THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md](./docs/THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md) | Remediation passes + interview Q&A |
 | [docs/HIRING_PITCH.md](./docs/HIRING_PITCH.md) | One-page hiring narrative |
-| [docs/INTERVIEW_PREP.md](./docs/INTERVIEW_PREP.md) | Interview deep dive, demo script, and code walkthrough |
+| [docs/INTERVIEW_PREP.md](./docs/INTERVIEW_PREP.md) | ERC-4337 / hook deep dive |
 | [docs/SECURITY_REVIEW.md](./docs/SECURITY_REVIEW.md) | Reviewer checklist |
+| [docs/THREAT_MODEL.md](./docs/THREAT_MODEL.md) | Threats + production key custody path |
 | [docs/TEST_MATRIX.md](./docs/TEST_MATRIX.md) | Threat / test coverage map |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System design |
-| [prd.md](./prd.md) | Product requirements |
-| [trd.md](./trd.md) | Technical requirements |
 
-**Sibling:** [x402-guard](https://github.com/prasanthkuna/x402-guard) — off-chain policy before x402 signature; optional on-chain ceiling via Railguard hook.
+**Siblings:** [x402-guard](https://github.com/prasanthkuna/x402-guard) · [railguard-cdp](https://github.com/prasanthkuna/railguard-cdp)
+
+## Known limitations (v0.1)
+
+Reference implementation with E2E/CI proof — **not** production-ready for mainnet funds. Gaps: deep reorg rewind, HSM/MPC signers, full Postgres fault-injection at API boundaries. See [PORTFOLIO.md](./docs/PORTFOLIO.md#known-limitations-v01).
 
 ## License
 

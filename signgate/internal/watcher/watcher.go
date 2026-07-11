@@ -97,6 +97,17 @@ func (r *Reconciler) tick(ctx context.Context) error {
 	return r.poll(ctx)
 }
 
+func computeSafeHead(head, confirm uint64) (safe uint64, ready bool) {
+	if confirm > 0 && head < confirm {
+		return 0, false
+	}
+	safe = head
+	if confirm > 0 {
+		safe = head - confirm
+	}
+	return safe, true
+}
+
 func (r *Reconciler) poll(ctx context.Context) error {
 	head, err := r.client.BlockNumber(ctx)
 	if err != nil {
@@ -104,12 +115,9 @@ func (r *Reconciler) poll(ctx context.Context) error {
 	}
 
 	confirm := uint64(r.cfg.WatcherConfirmation)
-	if confirm > 0 && head < confirm {
+	safeHead, ready := computeSafeHead(head, confirm)
+	if !ready {
 		return nil
-	}
-	safeHead := head
-	if confirm > 0 {
-		safeHead = head - confirm
 	}
 	if safeHead <= r.lastBlock {
 		return nil

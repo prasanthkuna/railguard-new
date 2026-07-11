@@ -1,5 +1,8 @@
 # Railguard Interview Prep
 
+> **Also read:** [THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md](./THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md) — detailed pass 3–5 improvements across railguard-new, x402-guard, and railguard-cdp, plus STAR stories and demo scripts.  
+> **Architecture diagram:** [THREE_PROJECT_SYSTEM_DIAGRAM.md](./THREE_PROJECT_SYSTEM_DIAGRAM.md) — single master Mermaid diagram covering all three repos.
+
 Use this as your spoken playbook. The goal is not to memorize every file. The goal is to understand the system deeply enough that any question maps back to one of the same few ideas:
 
 1. AI agents can decide to pay, but chain execution is where money actually moves.

@@ -81,3 +81,18 @@ func TestExecutionAllowedTopicHash(t *testing.T) {
 		t.Fatalf("topic mismatch got %s want %s", executionAllowedSig.Hex(), want.Hex())
 	}
 }
+
+func TestComputeSafeHeadWaitsForConfirmationDepth(t *testing.T) {
+	safe, ready := computeSafeHead(2, 3)
+	if ready || safe != 0 {
+		t.Fatalf("head below confirm depth should not be ready: safe=%d ready=%v", safe, ready)
+	}
+	safe, ready = computeSafeHead(5, 3)
+	if !ready || safe != 2 {
+		t.Fatalf("safe head = head - confirm: got safe=%d ready=%v", safe, ready)
+	}
+	safe, ready = computeSafeHead(10, 0)
+	if !ready || safe != 10 {
+		t.Fatalf("confirm=0 uses head: got safe=%d ready=%v", safe, ready)
+	}
+}
