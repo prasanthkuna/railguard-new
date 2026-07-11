@@ -1,12 +1,46 @@
 # Railguard Portfolio — Start Here
 
-**One-line pitch:** Policy-enforced payment safety for AI-agent stablecoin payments — from pre-sign x402 policy through session-scoped on-chain enforcement to CDP invoice execution and audit reconciliation.
+> **Send recruiters and reviewers only this link:**  
+> `https://github.com/prasanthkuna/railguard-new/blob/master/docs/PORTFOLIO.md`
 
-**Status:** Completed **v0.1 reference implementation** with E2E proof, CI green, and documented production gaps. Not marketed as production-ready for mainnet funds.
+[![v0.1-reference](https://img.shields.io/badge/release-v0.1--reference-blue)](./RELEASE_v0.1-reference.md)
+[![ci](https://github.com/prasanthkuna/railguard-new/actions/workflows/ci.yml/badge.svg)](https://github.com/prasanthkuna/railguard-new/actions/workflows/ci.yml)
+[![E2E proof](https://img.shields.io/badge/E2E-docker%20happy--path-green)](../../scripts/e2e-happy-path.ps1)
+[![status](https://img.shields.io/badge/status-v0.1%20reference%20impl-lightgrey)](./RELEASE_v0.1-reference.md)
+
+**One-line pitch:** Policy-enforced payment safety for AI-agent stablecoin payments — pre-sign x402 policy, session-scoped on-chain enforcement, CDP reconciliation.
+
+**Status:** v0.1 **reference implementation** — E2E proof, CI green, **known production gaps documented**. Not production-ready for mainnet funds.
 
 ---
 
-## Core invariant (lead with this in interviews)
+## Reviewer path
+
+| Time | Do this |
+|------|---------|
+| **2 min** | Read [What I built](#what-i-built) + [Failure modes](#what-failed-in-audit--what-i-fixed) below |
+| **5 min** | `cd x402-guard && bun test packages/policy/src/authorize.test.ts` |
+| **10 min** | `cd railguard-new/contracts && forge test --match-contract PrdDemo -vv` |
+| **15 min** | Docker E2E: `docker compose up -d --build` → `apply-db-migrations.ps1` → `e2e-happy-path.ps1` |
+
+---
+
+## What I built
+
+Frozen v0.1 scope (no feature creep):
+
+```text
+Pre-sign x402 policy
+Atomic replay + budget authorization
+Railguard SignGate / session path
+On-chain hook enforcement proof
+CDP invoice execution proof
+Audit + reconciliation
+Failure-mode tests
+Portfolio docs
+```
+
+**Invariant:**
 
 ```text
 Intent → Policy → Session → Signature → Hook → Receipt → Reconcile
@@ -16,80 +50,103 @@ Intent → Policy → Session → Signature → Hook → Receipt → Reconcile
 
 ---
 
-## Three enforcement boundaries (not three random repos)
+## What failed in audit — what I fixed
 
-| # | Boundary | Repo | What it proves |
-|---|----------|------|----------------|
-| 1 | **Pre-sign x402 policy** | [x402-guard](https://github.com/prasanthkuna/x402-guard) | Fail-closed caps, domains, replay, rolling budgets **before** payment |
-| 2 | **Session + on-chain ceiling** | [railguard-new](https://github.com/prasanthkuna/railguard-new) (this repo) | SignGate, OPA, hook, watcher — physical enforcement on-chain |
-| 3 | **Invoice / CDP product** | [railguard-cdp](https://github.com/prasanthkuna/railguard-cdp) | Human approvals, CDP broadcast, exactly-once state, reconciler |
+| Bug | Fix | Proof |
+|-----|-----|-------|
+| Mutable ALLOW limits | Limits in intent hash | `intent_test.go` |
+| Budget TOCTOU | `authorizePayment` reserve/commit | `authorize.test.ts` |
+| Post-broadcast `failed` | `unknown` + reconciler | `payment-state.test.ts` |
+| FIFO reconciliation | `executionDigest` | `e2e-happy-path.ps1` |
 
-**CDP path vs hook path:** The CDP demo proves B2B invoice workflow, broadcast truth, and reconciliation. The Railguard hook proves smart-account-native physical enforcement (token, recipient, caps). In v0.1 they share policy and audit **concepts** (`authorizePayment`, receipts, snapshot hashes); full routing from every CDP transfer through a Railguard smart account is future hardening — not hidden.
+Full table: [FAILURE_MODES_FIXED.md](./FAILURE_MODES_FIXED.md)
+
+Blog draft: [BLOG_HARDENING_AGENT_PAYMENTS.md](./BLOG_HARDENING_AGENT_PAYMENTS.md)
 
 ---
 
-## Source of truth
+## What is still open (honest)
 
-| Question | Source of truth |
-|----------|-----------------|
-| Can this HTTP/x402 payment be attempted? | `x402-guard` authorization store (`claimReplay` + `reserveBudget`) |
-| Can this Railguard session move funds on-chain? | On-chain hook + session config (caps, token, recipient) |
-| Did CDP broadcast money? | `broadcastedTxHash` + CDP provider response |
-| Did the transfer actually succeed? | Chain receipt `status === "success"` |
-| What happened for audit? | Hash-chained audit events + signed receipts |
-| What should UI show for ambiguous state? | `submitted` / `unknown` until reconciler resolves |
-| Which reservation matches which execution? | `executionDigest` (not queue position) |
+- Full Postgres integration fault-injection at API boundaries
+- Deep reorg rewind (confirmation depth is configurable)
+- HSM/MPC for SignGate cosigners ([THREAT_MODEL.md](./THREAT_MODEL.md))
+- CDP monorepo dependency audit cleanup ([railguard-cdp DEPENDENCY_AUDIT](https://github.com/prasanthkuna/railguard-cdp/blob/main/docs/DEPENDENCY_AUDIT.md))
+
+**Not in v0.1:** Paymaster, Solana, multi-chain, dashboard, arbitrary routers, mainnet funds.
 
 ---
 
 ## 5-minute demo
 
 ```powershell
-# 1) Atomic x402 budget (3 min)
+# x402 atomic budget (~2 min)
 cd x402-guard
 bun test packages/policy/src/authorize.test.ts
 
-# 2) On-chain attacks blocked (5 min)
+# On-chain attacks blocked (~3 min)
 cd ..\railguard-new\contracts
 forge test --match-contract PrdDemo -vv
-
-# 3) Full loop (10–15 min)
-cd ..
-docker compose up -d --build
-powershell -File .\scripts\apply-db-migrations.ps1
-powershell -File .\scripts\e2e-happy-path.ps1
 ```
 
----
+Full loop (~15 min): see [RELEASE_v0.1-reference.md](./RELEASE_v0.1-reference.md)
 
-## Architecture diagram
-
-[THREE_PROJECT_SYSTEM_DIAGRAM.md](./THREE_PROJECT_SYSTEM_DIAGRAM.md) — single master Mermaid diagram.
+Video script: [VIDEO_SCRIPT_v0.1.md](./VIDEO_SCRIPT_v0.1.md) *(record locally)*
 
 ---
 
-## Audit → fix → proof story
+## Three enforcement boundaries
 
-[FAILURE_MODES_FIXED.md](./FAILURE_MODES_FIXED.md) — bug class, exploit, fix, test command per row.
+| # | Boundary | Repo |
+|---|----------|------|
+| 1 | Pre-sign x402 policy | [x402-guard](https://github.com/prasanthkuna/x402-guard) |
+| 2 | Session + on-chain ceiling | [railguard-new](https://github.com/prasanthkuna/railguard-new) |
+| 3 | Invoice / CDP product | [railguard-cdp](https://github.com/prasanthkuna/railguard-cdp) |
 
-[THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md](./THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md) — pass 3–5 remediation, STAR stories, Q&A.
-
----
-
-## Known limitations (v0.1)
-
-- No Paymaster, no arbitrary DeFi router parsing, no multi-chain in scope
-- SignGate signer keys are dev/local — production needs HSM/MPC ([THREAT_MODEL.md](./THREAT_MODEL.md))
-- Watcher: confirmation depth configurable; deep reorg rewind not complete
-- Fault-injection at full Postgres API boundaries: partial (unit tests on primitives)
-- Mainnet funds: out of scope
+**CDP vs hook:** CDP proves invoice workflow + broadcast reconciliation. Hook proves smart-account caps. v0.1 shares policy/audit primitives; full CDP→smart-account routing is v0.2+.
 
 ---
 
-## Repos & CI
+## Source of truth
 
-| Repo | CI | Canonical proof |
-|------|-----|-----------------|
-| [railguard-new](https://github.com/prasanthkuna/railguard-new) | [![ci](https://github.com/prasanthkuna/railguard-new/actions/workflows/ci.yml/badge.svg)](https://github.com/prasanthkuna/railguard-new/actions/workflows/ci.yml) | `e2e-happy-path.ps1` |
-| [x402-guard](https://github.com/prasanthkuna/x402-guard) | [![CI](https://github.com/prasanthkuna/x402-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/prasanthkuna/x402-guard/actions/workflows/ci.yml) | `bun test` |
-| [railguard-cdp](https://github.com/prasanthkuna/railguard-cdp) | PR checks | `bun test apps/api` |
+| Question | Authority |
+|----------|-----------|
+| x402 payment allowed? | `x402-guard` `authorizePayment` store |
+| On-chain spend allowed? | Hook + session config |
+| CDP broadcast happened? | `broadcastedTxHash` |
+| Transfer succeeded? | Receipt `status === success` |
+| Audit trail? | Hash-chained audit + receipts |
+| Ambiguous UI state? | `submitted` / `unknown` until reconciler |
+| Reservation ↔ execution? | `executionDigest` |
+
+---
+
+## Architecture
+
+[THREE_PROJECT_SYSTEM_DIAGRAM.md](./THREE_PROJECT_SYSTEM_DIAGRAM.md)
+
+---
+
+## Interview & outreach
+
+| Doc | Use |
+|-----|-----|
+| [INTERVIEW_OPENERS.md](./INTERVIEW_OPENERS.md) | 30s / 3m / 10m scripts |
+| [PITCH_COINBASE_BASE.md](./PITCH_COINBASE_BASE.md) | Base / CDP roles |
+| [PITCH_FIREBLOCKS.md](./PITCH_FIREBLOCKS.md) | Transaction policy |
+| [PITCH_SAFE_RHINESTONE.md](./PITCH_SAFE_RHINESTONE.md) | Account abstraction |
+| [PITCH_BACKEND_PLATFORM.md](./PITCH_BACKEND_PLATFORM.md) | Platform / payments eng |
+| [LINKEDIN_THREAD.md](./LINKEDIN_THREAD.md) | Distribution thread |
+| [REVIEW_REQUESTS.md](./REVIEW_REQUESTS.md) | External review issues |
+| [UPSTREAM_CONTRIBUTION.md](./UPSTREAM_CONTRIBUTION.md) | One upstream PR/comment |
+
+---
+
+## Release
+
+Tag **`v0.1-reference`** on all three repos. Notes: [RELEASE_v0.1-reference.md](./RELEASE_v0.1-reference.md)
+
+| Repo | CI |
+|------|-----|
+| railguard-new | [![ci](https://github.com/prasanthkuna/railguard-new/actions/workflows/ci.yml/badge.svg)](https://github.com/prasanthkuna/railguard-new/actions/workflows/ci.yml) |
+| x402-guard | [![CI](https://github.com/prasanthkuna/x402-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/prasanthkuna/x402-guard/actions/workflows/ci.yml) |
+| railguard-cdp | PR checks on `main` |

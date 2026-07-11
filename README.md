@@ -1,12 +1,14 @@
 # Railguard
 
 [![ci](https://github.com/prasanthkuna/railguard-new/actions/workflows/ci.yml/badge.svg)](https://github.com/prasanthkuna/railguard-new/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/prasanthkuna/railguard-new?label=release)](https://github.com/prasanthkuna/railguard-new/releases)
+[![release](https://img.shields.io/github/v/tag/prasanthkuna/railguard-new/v0.1-reference?label=v0.1-reference)](https://github.com/prasanthkuna/railguard-new/releases/tag/v0.1-reference)
 [![license](https://img.shields.io/github/license/prasanthkuna/railguard-new)](./LICENSE)
+[![E2E](https://img.shields.io/badge/E2E-docker%20happy--path-green)](./scripts/e2e-happy-path.ps1)
+[![status](https://img.shields.io/badge/status-reference%20implementation-lightgrey)](./docs/RELEASE_v0.1-reference.md)
 
 Policy-enforced execution safety layer for AI-agent stablecoin payments.
 
-> **Start here:** [docs/PORTFOLIO.md](./docs/PORTFOLIO.md) — one-page story across all three repos, source-of-truth table, 5-minute demo, known limitations.
+> **Only link to send:** [docs/PORTFOLIO.md](./docs/PORTFOLIO.md) — reviewer path, demos, failure modes, honest gaps.
 
 > **Reviewer quick path (≈10 min):** `make test` → [docs/FAILURE_MODES_FIXED.md](./docs/FAILURE_MODES_FIXED.md) → `scripts/e2e-happy-path.ps1`
 
@@ -185,10 +187,21 @@ Foundry tests cover:
 
 | Doc | Purpose |
 |-----|---------|
-| [docs/PORTFOLIO.md](./docs/PORTFOLIO.md) | **Front door** — three-repo story, demo, limitations |
-| [docs/FAILURE_MODES_FIXED.md](./docs/FAILURE_MODES_FIXED.md) | Audit findings → fixes → proof commands |
-| [docs/THREE_PROJECT_SYSTEM_DIAGRAM.md](./docs/THREE_PROJECT_SYSTEM_DIAGRAM.md) | Master architecture Mermaid diagram |
-| [docs/THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md](./docs/THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md) | Remediation passes + interview Q&A |
+| [docs/PORTFOLIO.md](./docs/PORTFOLIO.md) | **Front door** — send this link only |
+| [docs/RELEASE_v0.1-reference.md](./docs/RELEASE_v0.1-reference.md) | v0.1-reference release notes |
+| [docs/FAILURE_MODES_FIXED.md](./docs/FAILURE_MODES_FIXED.md) | Audit findings → fixes → proof |
+| [docs/INTERVIEW_OPENERS.md](./docs/INTERVIEW_OPENERS.md) | 30s / 3m / 10m interview scripts |
+| [docs/BLOG_HARDENING_AGENT_PAYMENTS.md](./docs/BLOG_HARDENING_AGENT_PAYMENTS.md) | Public blog draft |
+| [docs/VIDEO_SCRIPT_v0.1.md](./docs/VIDEO_SCRIPT_v0.1.md) | 5-minute video script |
+| [docs/REVIEW_REQUESTS.md](./docs/REVIEW_REQUESTS.md) | External review issue templates |
+| [docs/UPSTREAM_CONTRIBUTION.md](./docs/UPSTREAM_CONTRIBUTION.md) | One upstream PR/comment plan |
+| [docs/LINKEDIN_THREAD.md](./docs/LINKEDIN_THREAD.md) | Distribution thread |
+| [docs/PITCH_COINBASE_BASE.md](./docs/PITCH_COINBASE_BASE.md) | Coinbase/Base pitch |
+| [docs/PITCH_FIREBLOCKS.md](./docs/PITCH_FIREBLOCKS.md) | Fireblocks pitch |
+| [docs/PITCH_SAFE_RHINESTONE.md](./docs/PITCH_SAFE_RHINESTONE.md) | Safe/Rhinestone pitch |
+| [docs/PITCH_BACKEND_PLATFORM.md](./docs/PITCH_BACKEND_PLATFORM.md) | Backend/platform pitch |
+| [docs/THREE_PROJECT_SYSTEM_DIAGRAM.md](./docs/THREE_PROJECT_SYSTEM_DIAGRAM.md) | Master Mermaid diagram |
+| [docs/THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md](./docs/THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md) | Remediation + Q&A |
 | [docs/HIRING_PITCH.md](./docs/HIRING_PITCH.md) | One-page hiring narrative |
 | [docs/INTERVIEW_PREP.md](./docs/INTERVIEW_PREP.md) | ERC-4337 / hook deep dive |
 | [docs/SECURITY_REVIEW.md](./docs/SECURITY_REVIEW.md) | Reviewer checklist |
