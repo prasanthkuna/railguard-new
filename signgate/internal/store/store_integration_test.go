@@ -55,6 +55,9 @@ func TestChainExecutionBySessionID(t *testing.T) {
 		t.Skipf("postgres not available: %v", err)
 	}
 	defer st.Close()
+	if err := st.EnsureExecutionDigestSchema(ctx); err != nil {
+		t.Fatalf("schema migration: %v", err)
+	}
 
 	sessionID := "0x1111111111111111111111111111111111111111111111111111111111111111"
 	exec := store.ChainExecution{
@@ -63,6 +66,7 @@ func TestChainExecutionBySessionID(t *testing.T) {
 		NonceKey:        "424242",
 		FrameSpend:      "50000000",
 		TotalSpendAfter: "50000000",
+		ExecutionDigest: "0xdeadbeef",
 		BlockNumber:     12,
 		TxHash:          "0xabc123",
 		LogIndex:        1,

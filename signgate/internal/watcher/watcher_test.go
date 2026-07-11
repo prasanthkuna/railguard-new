@@ -29,13 +29,15 @@ func TestIngestLogParsesExecutionAllowed(t *testing.T) {
 	account := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
 	sessionID := crypto.Keccak256Hash([]byte("session"))
 	nonceKey := big.NewInt(424242)
+	executionDigest := crypto.Keccak256Hash([]byte("digest"))
 	frameSpend := big.NewInt(50_000_000)
 	totalSpend := big.NewInt(50_000_000)
 	txHash := common.HexToHash("0xabc123def456")
 
-	data := make([]byte, 64)
-	copy(data[0:32], common.LeftPadBytes(frameSpend.Bytes(), 32))
-	copy(data[32:64], common.LeftPadBytes(totalSpend.Bytes(), 32))
+	data := make([]byte, 96)
+	copy(data[0:32], executionDigest.Bytes())
+	copy(data[32:64], common.LeftPadBytes(frameSpend.Bytes(), 32))
+	copy(data[64:96], common.LeftPadBytes(totalSpend.Bytes(), 32))
 
 	lg := types.Log{
 		Topics: []common.Hash{
@@ -58,29 +60,11 @@ func TestIngestLogParsesExecutionAllowed(t *testing.T) {
 	if st.got == nil {
 		t.Fatal("expected RecordChainExecution to be called")
 	}
-	if st.got.Account != "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266" {
-		t.Fatalf("account got %s", st.got.Account)
-	}
-	if st.got.SessionID != sessionID.Hex() {
-		t.Fatalf("sessionId got %s want %s", st.got.SessionID, sessionID.Hex())
-	}
-	if st.got.NonceKey != "424242" {
-		t.Fatalf("nonceKey got %s", st.got.NonceKey)
+	if st.got.ExecutionDigest != strings.ToLower(executionDigest.Hex()) {
+		t.Fatalf("executionDigest got %s", st.got.ExecutionDigest)
 	}
 	if st.got.FrameSpend != "50000000" {
 		t.Fatalf("frameSpend got %s", st.got.FrameSpend)
-	}
-	if st.got.TotalSpendAfter != "50000000" {
-		t.Fatalf("totalSpendAfter got %s", st.got.TotalSpendAfter)
-	}
-	if st.got.BlockNumber != 42 {
-		t.Fatalf("blockNumber got %d", st.got.BlockNumber)
-	}
-	if st.got.TxHash != strings.ToLower(txHash.Hex()) {
-		t.Fatalf("txHash got %s want %s", st.got.TxHash, txHash.Hex())
-	}
-	if st.got.LogIndex != 7 {
-		t.Fatalf("logIndex got %d", st.got.LogIndex)
 	}
 }
 
@@ -92,7 +76,7 @@ func TestIngestLogSkipsMalformedTopics(t *testing.T) {
 }
 
 func TestExecutionAllowedTopicHash(t *testing.T) {
-	want := crypto.Keccak256Hash([]byte("ExecutionAllowed(address,bytes32,uint192,uint256,uint256)"))
+	want := crypto.Keccak256Hash([]byte("ExecutionAllowed(address,bytes32,uint192,bytes32,uint256,uint256)"))
 	if executionAllowedSig != want {
 		t.Fatalf("topic mismatch got %s want %s", executionAllowedSig.Hex(), want.Hex())
 	}

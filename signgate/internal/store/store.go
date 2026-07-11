@@ -25,13 +25,24 @@ type Repository interface {
 	AuthorizeSession(ctx context.Context, in SessionAuthInput, sessionID string, cfg map[string]any) error
 	GetReservationIDByUserOp(ctx context.Context, userOpHash string) (string, error)
 	GetReservationIDByIdempotency(ctx context.Context, idempotencyKey string) (string, error)
+	BindReservationExecutionDigest(ctx context.Context, reservationID, executionDigest string) error
 	GetWatcherBlockCursor(ctx context.Context) (uint64, error)
-	SetWatcherBlockCursor(ctx context.Context, block uint64) error
+	SetWatcherBlockCursor(ctx context.Context, block uint64, blockHash string) error
 	RecordChainExecution(ctx context.Context, exec ChainExecution) error
 	GetChainExecutionBySessionID(ctx context.Context, sessionID string) (ChainExecution, error)
-	GetSessionMaxTotalSpend(ctx context.Context, sessionID string) (string, error)
+	GetSessionReserveSnapshot(ctx context.Context, sessionID string) (SessionReserveSnapshot, error)
 	MarkStaleUserOpsReconciliationRequired(ctx context.Context, olderThan time.Time) (int, error)
-	CommitBudgetOnChainExecution(ctx context.Context, sessionID, txHash string) error
+	CommitBudgetOnChainExecution(ctx context.Context, sessionID, executionDigest string) error
+}
+
+type SessionReserveSnapshot struct {
+	AgentID        string
+	IntentHash     string
+	MaxPerTransfer string
+	MaxTotalSpend  string
+	ValidAfter     int64
+	ValidUntil     int64
+	Status         string
 }
 
 type ChainExecution struct {
@@ -40,6 +51,7 @@ type ChainExecution struct {
 	NonceKey        string
 	FrameSpend      string
 	TotalSpendAfter string
+	ExecutionDigest string
 	BlockNumber     int64
 	TxHash          string
 	LogIndex        int
@@ -332,25 +344,42 @@ func (s *Store) GetWatcherBlockCursor(ctx context.Context) (uint64, error) {
 	return block, err
 }
 
-func (s *Store) SetWatcherBlockCursor(ctx context.Context, block uint64) error {
+func (s *Store) SetWatcherBlockCursor(ctx context.Context, block uint64, blockHash string) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO watcher_state (key, value, updated_at)
 		VALUES ('last_block', $1, $2)
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at
 	`, fmt.Sprintf("%d", block), time.Now().UTC())
+	if err != nil {
+		return err
+	}
+	if blockHash != "" {
+		_, err = s.pool.Exec(ctx, `
+			INSERT INTO watcher_state (key, value, updated_at)
+			VALUES ('last_block_hash', $1, $2)
+			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at
+		`, blockHash, time.Now().UTC())
+	}
 	return err
 }
 
 func (s *Store) RecordChainExecution(ctx context.Context, exec ChainExecution) error {
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO chain_executions (id, account, session_id, nonce_key, frame_spend, total_spend_after, block_number, tx_hash, log_index)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+		INSERT INTO chain_executions (
+			id, account, session_id, nonce_key, frame_spend, total_spend_after,
+			execution_digest, block_number, tx_hash, log_index
+		)
+		VALUES ($1,$2,$3,$4,$5,$6,NULLIF($7, ''),$8,$9,$10)
 		ON CONFLICT (tx_hash, log_index) DO NOTHING
-	`, uuid.New(), exec.Account, exec.SessionID, exec.NonceKey, exec.FrameSpend, exec.TotalSpendAfter, exec.BlockNumber, exec.TxHash, exec.LogIndex)
+	`, uuid.New(), exec.Account, exec.SessionID, exec.NonceKey, exec.FrameSpend, exec.TotalSpendAfter,
+		exec.ExecutionDigest, exec.BlockNumber, exec.TxHash, exec.LogIndex)
 	if err != nil {
 		return err
 	}
-	return s.CommitBudgetOnChainExecution(ctx, exec.SessionID, exec.TxHash)
+	if exec.ExecutionDigest == "" {
+		return nil
+	}
+	return s.CommitBudgetOnChainExecution(ctx, exec.SessionID, exec.ExecutionDigest)
 }
 
 func (s *Store) GetChainExecutionBySessionID(ctx context.Context, sessionID string) (ChainExecution, error) {
@@ -380,35 +409,65 @@ func (s *Store) MarkStaleUserOpsReconciliationRequired(ctx context.Context, olde
 	return int(tag.RowsAffected()), nil
 }
 
-func (s *Store) GetSessionMaxTotalSpend(ctx context.Context, sessionID string) (string, error) {
-	var maxTotal string
+func (s *Store) GetSessionReserveSnapshot(ctx context.Context, sessionID string) (SessionReserveSnapshot, error) {
+	var snap SessionReserveSnapshot
 	err := s.pool.QueryRow(ctx, `
-		SELECT COALESCE(max_total_spend, 0)::text
-		FROM sessions
-		WHERE lower(session_id) = lower($1)
-	`, sessionID).Scan(&maxTotal)
+		SELECT
+			s.agent_id,
+			COALESCE((
+				SELECT intent_hash FROM policy_decisions
+				WHERE consumed_session_id = s.session_id AND decision = 'ALLOW'
+				ORDER BY created_at DESC
+				LIMIT 1
+			), ''),
+			s.max_per_transfer::text,
+			s.max_total_spend::text,
+			s.valid_after,
+			s.valid_until,
+			s.status
+		FROM sessions s
+		WHERE lower(s.session_id) = lower($1)
+	`, sessionID).Scan(
+		&snap.AgentID, &snap.IntentHash, &snap.MaxPerTransfer, &snap.MaxTotalSpend,
+		&snap.ValidAfter, &snap.ValidUntil, &snap.Status,
+	)
 	if err != nil {
-		return "", fmt.Errorf("session not found")
+		return SessionReserveSnapshot{}, fmt.Errorf("session not found")
 	}
-	if maxTotal == "0" {
-		return "", fmt.Errorf("session has no max_total_spend")
-	}
-	return maxTotal, nil
+	return snap, nil
 }
 
-func (s *Store) CommitBudgetOnChainExecution(ctx context.Context, sessionID, _ string) error {
+func (s *Store) BindReservationExecutionDigest(ctx context.Context, reservationID, executionDigest string) error {
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE budget_reservations
-		SET status = 'BUDGET_COMMITTED', finalized_at = $2
+		SET execution_digest = $2
+		WHERE reservation_id = $1 AND status IN ('BUDGET_RESERVED', 'USEROP_SUBMITTED')
+	`, reservationID, executionDigest)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("reservation not found")
+	}
+	return nil
+}
+
+func (s *Store) CommitBudgetOnChainExecution(ctx context.Context, sessionID, executionDigest string) error {
+	if executionDigest == "" {
+		return nil
+	}
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE budget_reservations
+		SET status = 'BUDGET_COMMITTED', finalized_at = $3
 		WHERE reservation_id = (
 			SELECT reservation_id
 			FROM budget_reservations
 			WHERE lower(session_id) = lower($1)
+			  AND lower(execution_digest) = lower($2)
 			  AND status IN ('BUDGET_RESERVED', 'USEROP_SUBMITTED')
-			ORDER BY created_at ASC
 			LIMIT 1
 		)
-	`, sessionID, time.Now().UTC())
+	`, sessionID, executionDigest, time.Now().UTC())
 	if err != nil {
 		return err
 	}
@@ -416,6 +475,14 @@ func (s *Store) CommitBudgetOnChainExecution(ctx context.Context, sessionID, _ s
 		return nil
 	}
 	return nil
+}
+
+func (s *Store) EnsureExecutionDigestSchema(ctx context.Context) error {
+	_, err := s.pool.Exec(ctx, `
+		ALTER TABLE chain_executions ADD COLUMN IF NOT EXISTS execution_digest TEXT;
+		ALTER TABLE budget_reservations ADD COLUMN IF NOT EXISTS execution_digest TEXT;
+	`)
+	return err
 }
 
 // Noop satisfies Repository for local runs without Postgres.
@@ -456,16 +523,20 @@ func (Noop) GetReservationIDByUserOp(context.Context, string) (string, error) {
 func (Noop) GetReservationIDByIdempotency(context.Context, string) (string, error) {
 	return "", fmt.Errorf("reservation not found")
 }
+func (Noop) BindReservationExecutionDigest(context.Context, string, string) error { return nil }
 func (Noop) GetWatcherBlockCursor(context.Context) (uint64, error) { return 0, fmt.Errorf("noop") }
-func (Noop) SetWatcherBlockCursor(context.Context, uint64) error   { return nil }
+func (Noop) SetWatcherBlockCursor(context.Context, uint64, string) error { return nil }
 func (Noop) RecordChainExecution(context.Context, ChainExecution) error {
 	return nil
 }
 func (Noop) GetChainExecutionBySessionID(context.Context, string) (ChainExecution, error) {
 	return ChainExecution{}, fmt.Errorf("noop")
 }
-func (Noop) GetSessionMaxTotalSpend(context.Context, string) (string, error) {
-	return "500000000", nil
+func (Noop) GetSessionReserveSnapshot(context.Context, string) (SessionReserveSnapshot, error) {
+	return SessionReserveSnapshot{
+		AgentID: "agent_support_bot_1", MaxPerTransfer: "100000000", MaxTotalSpend: "500000000",
+		ValidAfter: 1, ValidUntil: 9999999999, Status: "SESSION_AUTHORIZED",
+	}, nil
 }
 func (Noop) MarkStaleUserOpsReconciliationRequired(context.Context, time.Time) (int, error) {
 	return 0, nil

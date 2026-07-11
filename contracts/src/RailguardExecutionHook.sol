@@ -23,6 +23,7 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
         address indexed account,
         bytes32 indexed sessionId,
         uint192 indexed nonceKey,
+        bytes32 executionDigest,
         uint256 frameSpend,
         uint256 totalSpendAfter
     );
@@ -107,7 +108,7 @@ contract RailguardExecutionHook is IRailguardExecutionHook {
         usedExecutions[ctx.account][ctx.executionDigest] = true;
         sessionExecutionSeq[ctx.account][ctx.sessionId] = ctx.executionSeq + 1;
 
-        emit ExecutionAllowed(ctx.account, ctx.sessionId, ctx.nonceKey, ctx.frameSpend, newSpend);
+        emit ExecutionAllowed(ctx.account, ctx.sessionId, ctx.nonceKey, ctx.executionDigest, ctx.frameSpend, newSpend);
     }
 
     function executionDigest(

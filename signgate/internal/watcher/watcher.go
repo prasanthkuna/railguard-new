@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var executionAllowedSig = crypto.Keccak256Hash([]byte("ExecutionAllowed(address,bytes32,uint192,uint256,uint256)"))
+var executionAllowedSig = crypto.Keccak256Hash([]byte("ExecutionAllowed(address,bytes32,uint192,bytes32,uint256,uint256)"))
 
 // Reconciler ingests on-chain ExecutionAllowed events for mandatory v1 reconciliation.
 type Reconciler struct {
@@ -104,8 +104,11 @@ func (r *Reconciler) poll(ctx context.Context) error {
 	}
 
 	confirm := uint64(r.cfg.WatcherConfirmation)
+	if confirm > 0 && head < confirm {
+		return nil
+	}
 	safeHead := head
-	if confirm > 0 && head > confirm {
+	if confirm > 0 {
 		safeHead = head - confirm
 	}
 	if safeHead <= r.lastBlock {
@@ -133,15 +136,25 @@ func (r *Reconciler) poll(ctx context.Context) error {
 		return err
 	}
 
+	blockLogs := make(map[uint64][]types.Log)
 	for _, lg := range logs {
-		if err := r.ingestLog(ctx, lg); err != nil {
-			r.log.Warn().Err(err).Str("tx", lg.TxHash.Hex()).Msg("failed to ingest ExecutionAllowed")
-		}
+		blockLogs[lg.BlockNumber] = append(blockLogs[lg.BlockNumber], lg)
 	}
 
-	r.lastBlock = to
-	if err := r.store.SetWatcherBlockCursor(ctx, to); err != nil {
-		r.log.Warn().Err(err).Msg("failed to persist watcher cursor")
+	for block := from; block <= to; block++ {
+		for _, lg := range blockLogs[block] {
+			if err := r.ingestLog(ctx, lg); err != nil {
+				return err
+			}
+		}
+		header, err := r.client.HeaderByNumber(ctx, big.NewInt(int64(block)))
+		if err != nil {
+			return err
+		}
+		if err := r.store.SetWatcherBlockCursor(ctx, block, header.Hash().Hex()); err != nil {
+			return err
+		}
+		r.lastBlock = block
 	}
 	return nil
 }
@@ -154,20 +167,25 @@ func (r *Reconciler) ingestLog(ctx context.Context, lg types.Log) error {
 	sessionID := lg.Topics[2]
 	nonceKey := new(big.Int).SetBytes(lg.Topics[3].Bytes()).String()
 
-	var frameSpend, totalSpendAfter string
-	if len(lg.Data) >= 64 {
+	var executionDigest, frameSpend, totalSpendAfter string
+	if len(lg.Data) >= 96 {
+		executionDigest = common.BytesToHash(lg.Data[0:32]).Hex()
+		frameSpend = new(big.Int).SetBytes(lg.Data[32:64]).String()
+		totalSpendAfter = new(big.Int).SetBytes(lg.Data[64:96]).String()
+	} else if len(lg.Data) >= 64 {
 		frameSpend = new(big.Int).SetBytes(lg.Data[0:32]).String()
 		totalSpendAfter = new(big.Int).SetBytes(lg.Data[32:64]).String()
 	}
 
 	return r.store.RecordChainExecution(ctx, store.ChainExecution{
-		Account:         strings.ToLower(account.Hex()),
-		SessionID:       sessionID.Hex(),
-		NonceKey:        nonceKey,
-		FrameSpend:      frameSpend,
-		TotalSpendAfter: totalSpendAfter,
-		BlockNumber:     int64(lg.BlockNumber),
-		TxHash:          strings.ToLower(lg.TxHash.Hex()),
-		LogIndex:        int(lg.Index),
+		Account:          strings.ToLower(account.Hex()),
+		SessionID:        sessionID.Hex(),
+		NonceKey:         nonceKey,
+		FrameSpend:       frameSpend,
+		TotalSpendAfter:  totalSpendAfter,
+		ExecutionDigest:  strings.ToLower(executionDigest),
+		BlockNumber:      int64(lg.BlockNumber),
+		TxHash:           strings.ToLower(lg.TxHash.Hex()),
+		LogIndex:         int(lg.Index),
 	})
 }

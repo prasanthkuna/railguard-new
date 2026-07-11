@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -287,12 +288,46 @@ func (s *Server) reserveBudget(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	maxTotalSpend, err := s.store.GetSessionMaxTotalSpend(r.Context(), req.SessionID)
+	snap, err := s.store.GetSessionReserveSnapshot(r.Context(), req.SessionID)
 	if err != nil {
-		http.Error(w, "session not found or missing budget cap", http.StatusNotFound)
+		http.Error(w, "session not found", http.StatusNotFound)
 		return
 	}
-	resID, err := s.reservation.Reserve(r.Context(), req.SessionID, req.IdempotencyKey, req.AmountAtomic, maxTotalSpend, 5*time.Minute)
+	if snap.Status != "" && strings.ToUpper(snap.Status) != "SESSION_AUTHORIZED" {
+		http.Error(w, "session not active", http.StatusConflict)
+		return
+	}
+	now := time.Now().Unix()
+	if now < snap.ValidAfter || now > snap.ValidUntil {
+		http.Error(w, "session outside validity window", http.StatusConflict)
+		return
+	}
+	if !strings.EqualFold(req.AgentID, snap.AgentID) {
+		http.Error(w, "agent mismatch", http.StatusConflict)
+		return
+	}
+	if snap.IntentHash != "" && !strings.EqualFold(req.IntentHash, snap.IntentHash) {
+		http.Error(w, "intent mismatch", http.StatusConflict)
+		return
+	}
+	amount, ok := new(big.Int).SetString(req.AmountAtomic, 10)
+	if !ok || amount.Sign() <= 0 {
+		http.Error(w, "invalid amount", http.StatusBadRequest)
+		return
+	}
+	maxPer, ok := new(big.Int).SetString(snap.MaxPerTransfer, 10)
+	if !ok || amount.Cmp(maxPer) > 0 {
+		writeJSON(w, http.StatusConflict, map[string]string{"status": "BUDGET_DENIED"})
+		return
+	}
+	sessionTTL := time.Until(time.Unix(snap.ValidUntil, 0))
+	if sessionTTL < time.Minute {
+		sessionTTL = time.Minute
+	}
+	resID, err := s.reservation.Reserve(
+		r.Context(), req.SessionID, req.IdempotencyKey, req.AmountAtomic, snap.MaxTotalSpend,
+		5*time.Minute, sessionTTL,
+	)
 	if err != nil {
 		writeJSON(w, http.StatusConflict, map[string]string{"status": "BUDGET_DENIED"})
 		return
@@ -310,9 +345,10 @@ func (s *Server) reserveBudget(w http.ResponseWriter, r *http.Request) {
 }
 
 type submittedReq struct {
-	ReservationID string `json:"reservationId"`
-	UserOpHash    string `json:"userOpHash"`
-	Bundler       string `json:"bundler"`
+	ReservationID   string `json:"reservationId"`
+	UserOpHash      string `json:"userOpHash"`
+	Bundler         string `json:"bundler"`
+	ExecutionDigest string `json:"executionDigest"`
 }
 
 func (s *Server) userOpSubmitted(w http.ResponseWriter, r *http.Request) {
@@ -324,6 +360,12 @@ func (s *Server) userOpSubmitted(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.UpdateReservationStatus(r.Context(), req.ReservationID, "USEROP_SUBMITTED"); err != nil {
 		http.Error(w, "reservation not found", http.StatusNotFound)
 		return
+	}
+	if req.ExecutionDigest != "" {
+		if err := s.store.BindReservationExecutionDigest(r.Context(), req.ReservationID, req.ExecutionDigest); err != nil {
+			http.Error(w, "failed to bind execution digest", http.StatusConflict)
+			return
+		}
 	}
 	if err := s.store.SaveUserOp(r.Context(), req.UserOpHash, req.ReservationID, "", "USEROP_SUBMITTED", req.Bundler); err != nil {
 		http.Error(w, "failed to persist userop", http.StatusInternalServerError)

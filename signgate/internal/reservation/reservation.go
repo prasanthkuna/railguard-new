@@ -92,7 +92,11 @@ func (s *Service) SweepExpired(ctx context.Context, now time.Time) error {
 }
 
 // Reserve atomically checks session budget using string big-int math in Go (safe above 2^53).
-func (s *Service) Reserve(ctx context.Context, sessionID, idempotencyKey, amountAtomic, maxTotalSpend string, preSubmitTTL time.Duration) (string, error) {
+func (s *Service) Reserve(
+	ctx context.Context,
+	sessionID, idempotencyKey, amountAtomic, maxTotalSpend string,
+	preSubmitTTL, sessionAggregateTTL time.Duration,
+) (string, error) {
 	if err := s.SweepExpired(ctx, time.Now()); err != nil {
 		return "", err
 	}
@@ -143,9 +147,12 @@ func (s *Service) Reserve(ctx context.Context, sessionID, idempotencyKey, amount
 	if ttlSec <= 0 {
 		ttlSec = 300
 	}
+	if sessionAggregateTTL <= 0 {
+		sessionAggregateTTL = 24 * time.Hour
+	}
 
 	pipe := s.rdb.TxPipeline()
-	pipe.Set(ctx, sessionKey(sessionID), next.String(), 24*time.Hour)
+	pipe.Set(ctx, sessionKey(sessionID), next.String(), sessionAggregateTTL)
 	pipe.Set(ctx, idem, reservationID, time.Duration(ttlSec)*time.Second)
 	metaTTL := time.Duration(ttlSec*2) * time.Second
 	pipe.Set(ctx, reservationMetaKey(reservationID), sessionID+"|"+amountAtomic, metaTTL)
@@ -236,5 +243,5 @@ func (s *Service) releaseAmount(ctx context.Context, sessionID, amountAtomic str
 	if next.Sign() < 0 {
 		next = big.NewInt(0)
 	}
-	return s.rdb.Set(ctx, sessionKey(sessionID), next.String(), 24*time.Hour).Err()
+	return s.rdb.SetArgs(ctx, sessionKey(sessionID), next.String(), redis.SetArgs{KeepTTL: true}).Err()
 }
