@@ -604,7 +604,8 @@ Creates deterministic evidence for every payment decision.
 ### SDK
 
 * TypeScript
-* AgentKit/x402 adapter stub
+* AgentKit adapter stub
+* x402-guard integration via `createX402Guard()` — see [x402-guard](https://github.com/prasanthkuna/x402-guard)
 * Viem for test vectors
 
 ### Testing
@@ -731,7 +732,7 @@ Do not claim generic ERC-7579 compatibility until adapter tests pass on a known 
 
 * TypeScript payment intent builder
 * test vector generator
-* AgentKit/x402 integration stub
+* AgentKit adapter stub; x402 via [x402-guard](https://github.com/prasanthkuna/x402-guard) `createX402Guard()`
 
 ### Documentation
 

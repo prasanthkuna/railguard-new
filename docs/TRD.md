@@ -1322,7 +1322,7 @@ Developer-facing integration layer.
 * generate EIP-712 test vectors
 * integrate with Viem
 * provide AgentKit adapter stub
-* provide x402 adapter stub
+* re-export [x402-guard](https://github.com/prasanthkuna/x402-guard) via `createX402Guard()` (`sdk/src/x402Adapter.ts`)
 
 ## 19.3 V1 SDK APIs
 
