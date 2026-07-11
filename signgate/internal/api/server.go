@@ -281,12 +281,21 @@ func (s *Server) reserveBudget(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	resID, err := s.reservation.Reserve(r.Context(), req.SessionID, req.IdempotencyKey, req.AmountAtomic, req.MaxTotalSpend, 5*time.Minute)
+	maxTotalSpend, err := s.store.GetSessionMaxTotalSpend(r.Context(), req.SessionID)
+	if err != nil {
+		http.Error(w, "session not found or missing budget cap", http.StatusNotFound)
+		return
+	}
+	resID, err := s.reservation.Reserve(r.Context(), req.SessionID, req.IdempotencyKey, req.AmountAtomic, maxTotalSpend, 5*time.Minute)
 	if err != nil {
 		writeJSON(w, http.StatusConflict, map[string]string{"status": "BUDGET_DENIED"})
 		return
 	}
-	_ = s.store.SaveReservation(r.Context(), resID, req.SessionID, req.IntentHash, req.AgentID, req.AmountAtomic, "BUDGET_RESERVED", req.IdempotencyKey)
+	if err := s.store.SaveReservation(r.Context(), resID, req.SessionID, req.IntentHash, req.AgentID, req.AmountAtomic, "BUDGET_RESERVED", req.IdempotencyKey); err != nil {
+		_ = s.reservation.ReleaseReservation(r.Context(), resID)
+		http.Error(w, "failed to persist reservation", http.StatusInternalServerError)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"reservationId": resID, "status": "RESERVED"})
 }
 
@@ -302,8 +311,14 @@ func (s *Server) userOpSubmitted(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	_ = s.store.UpdateReservationStatus(r.Context(), req.ReservationID, "USEROP_SUBMITTED")
-	_ = s.store.SaveUserOp(r.Context(), req.UserOpHash, req.ReservationID, "", "USEROP_SUBMITTED", req.Bundler)
+	if err := s.store.UpdateReservationStatus(r.Context(), req.ReservationID, "USEROP_SUBMITTED"); err != nil {
+		http.Error(w, "reservation not found", http.StatusNotFound)
+		return
+	}
+	if err := s.store.SaveUserOp(r.Context(), req.UserOpHash, req.ReservationID, "", "USEROP_SUBMITTED", req.Bundler); err != nil {
+		http.Error(w, "failed to persist userop", http.StatusInternalServerError)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "USEROP_SUBMITTED"})
 }
 

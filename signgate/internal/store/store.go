@@ -28,6 +28,7 @@ type Repository interface {
 	SetWatcherBlockCursor(ctx context.Context, block uint64) error
 	RecordChainExecution(ctx context.Context, exec ChainExecution) error
 	GetChainExecutionBySessionID(ctx context.Context, sessionID string) (ChainExecution, error)
+	GetSessionMaxTotalSpend(ctx context.Context, sessionID string) (string, error)
 	MarkStaleUserOpsReconciliationRequired(ctx context.Context, olderThan time.Time) (int, error)
 	CommitBudgetOnChainExecution(ctx context.Context, sessionID, txHash string) error
 }
@@ -372,13 +373,42 @@ func (s *Store) MarkStaleUserOpsReconciliationRequired(ctx context.Context, olde
 	return int(tag.RowsAffected()), nil
 }
 
+func (s *Store) GetSessionMaxTotalSpend(ctx context.Context, sessionID string) (string, error) {
+	var maxTotal string
+	err := s.pool.QueryRow(ctx, `
+		SELECT COALESCE(max_total_spend, 0)::text
+		FROM sessions
+		WHERE lower(session_id) = lower($1)
+	`, sessionID).Scan(&maxTotal)
+	if err != nil {
+		return "", fmt.Errorf("session not found")
+	}
+	if maxTotal == "0" {
+		return "", fmt.Errorf("session has no max_total_spend")
+	}
+	return maxTotal, nil
+}
+
 func (s *Store) CommitBudgetOnChainExecution(ctx context.Context, sessionID, _ string) error {
-	_, err := s.pool.Exec(ctx, `
+	tag, err := s.pool.Exec(ctx, `
 		UPDATE budget_reservations
 		SET status = 'BUDGET_COMMITTED', finalized_at = $2
-		WHERE session_id = $1 AND status IN ('BUDGET_RESERVED', 'USEROP_SUBMITTED')
+		WHERE reservation_id = (
+			SELECT reservation_id
+			FROM budget_reservations
+			WHERE lower(session_id) = lower($1)
+			  AND status IN ('BUDGET_RESERVED', 'USEROP_SUBMITTED')
+			ORDER BY created_at ASC
+			LIMIT 1
+		)
 	`, sessionID, time.Now().UTC())
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return nil
+	}
+	return nil
 }
 
 // Noop satisfies Repository for local runs without Postgres.
@@ -423,6 +453,9 @@ func (Noop) RecordChainExecution(context.Context, ChainExecution) error {
 }
 func (Noop) GetChainExecutionBySessionID(context.Context, string) (ChainExecution, error) {
 	return ChainExecution{}, fmt.Errorf("noop")
+}
+func (Noop) GetSessionMaxTotalSpend(context.Context, string) (string, error) {
+	return "500000000", nil
 }
 func (Noop) MarkStaleUserOpsReconciliationRequired(context.Context, time.Time) (int, error) {
 	return 0, nil
