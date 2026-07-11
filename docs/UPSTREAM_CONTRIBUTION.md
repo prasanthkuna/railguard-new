@@ -24,6 +24,8 @@ authorizePayment → sign → commit | release on failure
 
 **Target:** [mark3labs/x402-go#26](https://github.com/mark3labs/x402-go/issues/26) or [x402-foundation/x402#2294](https://github.com/x402-foundation/x402/issues/2294)
 
+**Status:** Posted on [x402-go#26](https://github.com/mark3labs/x402-go/issues/26#issuecomment-4945323752).
+
 **Comment draft:**
 
 > I built a reference implementation of pre-sign spending policy + atomic budget reservation for agent payments (replay claim, rolling windows, commit/release): https://github.com/prasanthkuna/x402-guard (tag v0.1-reference). Happy to align on a minimal middleware interface if useful — not proposing a full standard, just sharing patterns from audit remediation.

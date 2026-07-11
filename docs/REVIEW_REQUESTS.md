@@ -2,6 +2,17 @@
 
 Copy each section into a GitHub issue (or discussion) when reaching out to x402, Base, Safe, or payments engineers.
 
+**Created on railguard-new:**
+
+| # | Issue |
+|---|-------|
+| 1 | https://github.com/prasanthkuna/railguard-new/issues/1 — x402 `authorizePayment` |
+| 2 | https://github.com/prasanthkuna/railguard-new/issues/2 — `executionDigest` reconciliation |
+| 3 | https://github.com/prasanthkuna/railguard-new/issues/3 — CDP post-broadcast state |
+| 4 | https://github.com/prasanthkuna/railguard-new/issues/4 — failure modes table |
+
+**Upstream:** Comment posted on [mark3labs/x402-go#26](https://github.com/mark3labs/x402-go/issues/26#issuecomment-4945323752).
+
 **Ask:** “Can you poke holes in this state machine?” — not “please star my repo.”
 
 ---
