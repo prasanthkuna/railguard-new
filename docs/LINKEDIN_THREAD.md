@@ -1,6 +1,9 @@
 # LinkedIn / X thread (copy-paste)
 
-**Thread — 6 posts**
+> **Visual launch:** [X_IMAGE_MANIFEST.md](./X_IMAGE_MANIFEST.md) — **4 images minimum** (pin + diagram + 2 proofs).  
+> One pin image + short thread beats an 8-carousel campaign.
+
+**4 posts** *(full copy in manifest)*
 
 ---
 

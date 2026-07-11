@@ -1,0 +1,15 @@
+{
+  "name": "railguard-x-slides",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "bun run capture-outputs.ts",
+    "build": "bun run build-slides.ts",
+    "generate": "bun run capture-outputs.ts && bun run build-slides.ts && bun run generate-chrome.ts",
+    "generate:playwright": "bun run generate.ts",
+    "install:browser": "bunx playwright install chromium"
+  },
+  "devDependencies": {
+    "playwright": "^1.52.0"
+  }
+}

@@ -24,3 +24,15 @@ sdk/dist/
 Thumbs.db
 .DS_Store
 __pycache__/
+
+# X campaign — commit generator + 2 showcase PNGs only
+assets/x-campaign/generator/node_modules/
+assets/x-campaign/generator/slides-out/
+assets/x-campaign/generator/slides.html
+assets/x-campaign/cursor/
+assets/x-campaign/carousels/
+assets/x-campaign/standalone/
+assets/x-campaign/brand/
+assets/x-campaign/screenshots/
+assets/x-campaign/proof-*.png
+assets/x-campaign/generator/test-shot.png

@@ -10,6 +10,10 @@ Policy-enforced execution safety layer for AI-agent stablecoin payments.
 
 > **Only link to send:** [docs/PORTFOLIO.md](./docs/PORTFOLIO.md) — reviewer path, demos, failure modes, honest gaps.
 
+![Railguard v0.1 — audit remediation on agent payment glue](assets/x-campaign/pin-one-pager.png)
+
+![Three enforcement boundaries: pre-sign · execute · reconcile](assets/x-campaign/diagram-boundaries.png)
+
 > **Reviewer quick path (≈10 min):** `make test` → [docs/FAILURE_MODES_FIXED.md](./docs/FAILURE_MODES_FIXED.md) → `scripts/e2e-happy-path.ps1`
 
 ## Three-repo stack

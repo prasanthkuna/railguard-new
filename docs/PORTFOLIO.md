@@ -136,6 +136,9 @@ Video script: [VIDEO_SCRIPT_v0.1.md](./VIDEO_SCRIPT_v0.1.md) *(record locally)*
 | [PITCH_SAFE_RHINESTONE.md](./PITCH_SAFE_RHINESTONE.md) | Account abstraction |
 | [PITCH_BACKEND_PLATFORM.md](./PITCH_BACKEND_PLATFORM.md) | Platform / payments eng |
 | [LINKEDIN_THREAD.md](./LINKEDIN_THREAD.md) | Distribution thread |
+| [X_INFOGRAPHIC_ASSET_BRIEF.md](./X_INFOGRAPHIC_ASSET_BRIEF.md) | Design rules for X carousels |
+| [X_IMAGE_MANIFEST.md](./X_IMAGE_MANIFEST.md) | **4–9 images** — minimal X launch |
+| [RAILGUARD_SENSE_DESIGN_LANGUAGE.md](./RAILGUARD_SENSE_DESIGN_LANGUAGE.md) | Blade-inspired tokens + truth states |
 | [REVIEW_REQUESTS.md](./REVIEW_REQUESTS.md) | External review issues |
 | [UPSTREAM_CONTRIBUTION.md](./UPSTREAM_CONTRIBUTION.md) | One upstream PR/comment |
 
