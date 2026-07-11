@@ -61,8 +61,6 @@ Intent → Policy → Session → Signature → Hook → Receipt → Reconcile
 
 Full table: [FAILURE_MODES_FIXED.md](./FAILURE_MODES_FIXED.md)
 
-Blog draft: [BLOG_HARDENING_AGENT_PAYMENTS.md](./BLOG_HARDENING_AGENT_PAYMENTS.md)
-
 ---
 
 ## What is still open (honest)
@@ -89,8 +87,6 @@ forge test --match-contract PrdDemo -vv
 ```
 
 Full loop (~15 min): see [RELEASE_v0.1-reference.md](./RELEASE_v0.1-reference.md)
-
-Video script: [VIDEO_SCRIPT_v0.1.md](./VIDEO_SCRIPT_v0.1.md) *(record locally)*
 
 ---
 
@@ -126,22 +122,9 @@ Video script: [VIDEO_SCRIPT_v0.1.md](./VIDEO_SCRIPT_v0.1.md) *(record locally)*
 
 ---
 
-## Interview & outreach
+## OSS contribution
 
-| Doc | Use |
-|-----|-----|
-| [INTERVIEW_OPENERS.md](./INTERVIEW_OPENERS.md) | 30s / 3m / 10m scripts |
-| [PITCH_COINBASE_BASE.md](./PITCH_COINBASE_BASE.md) | Base / CDP roles |
-| [PITCH_FIREBLOCKS.md](./PITCH_FIREBLOCKS.md) | Transaction policy |
-| [PITCH_SAFE_RHINESTONE.md](./PITCH_SAFE_RHINESTONE.md) | Account abstraction |
-| [PITCH_BACKEND_PLATFORM.md](./PITCH_BACKEND_PLATFORM.md) | Platform / payments eng |
-| [LINKEDIN_THREAD.md](./LINKEDIN_THREAD.md) | Distribution thread |
-| [X_INFOGRAPHIC_ASSET_BRIEF.md](./X_INFOGRAPHIC_ASSET_BRIEF.md) | Design rules for X carousels |
-| [X_IMAGE_MANIFEST.md](./X_IMAGE_MANIFEST.md) | **4–9 images** — minimal X launch |
-| [GITHUB_PROFILE_SETUP.md](./GITHUB_PROFILE_SETUP.md) | Pin repos + profile bio (2 min) |
-| [RAILGUARD_SENSE_DESIGN_LANGUAGE.md](./RAILGUARD_SENSE_DESIGN_LANGUAGE.md) | Blade-inspired tokens + truth states |
-| [REVIEW_REQUESTS.md](./REVIEW_REQUESTS.md) | External review issues |
-| [UPSTREAM_CONTRIBUTION.md](./UPSTREAM_CONTRIBUTION.md) | One upstream PR/comment |
+[UPSTREAM_CONTRIBUTION.md](./UPSTREAM_CONTRIBUTION.md) — one upstream PR/comment plan for x402-go.
 
 ---
 

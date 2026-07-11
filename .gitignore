@@ -29,10 +29,17 @@ __pycache__/
 assets/x-campaign/generator/node_modules/
 assets/x-campaign/generator/slides-out/
 assets/x-campaign/generator/slides.html
+assets/x-campaign/generator/terminal-outputs.json
 assets/x-campaign/cursor/
 assets/x-campaign/carousels/
 assets/x-campaign/standalone/
 assets/x-campaign/brand/
 assets/x-campaign/screenshots/
 assets/x-campaign/proof-*.png
+assets/x-campaign/proof-*.txt
 assets/x-campaign/generator/test-shot.png
+
+# Private — interview prep, pitches, distribution playbooks (local only)
+docs/private/
+notes/
+*.local.md

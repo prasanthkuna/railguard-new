@@ -284,6 +284,6 @@ cd coinbase && bun test apps/api packages
 
 ## Related docs
 
-- [THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md](./THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md) — remediation narrative + interview Q&A  
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — layer definitions  
-- [INTERVIEW_PREP.md](./INTERVIEW_PREP.md) — ERC-4337 / hook deep dive  
+- [FAILURE_MODES_FIXED.md](./FAILURE_MODES_FIXED.md) — audit findings → fixes → proof  
+- [THREAT_MODEL.md](./THREAT_MODEL.md) — threats + production key custody path  

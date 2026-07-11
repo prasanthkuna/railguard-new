@@ -194,24 +194,16 @@ Foundry tests cover:
 | [docs/PORTFOLIO.md](./docs/PORTFOLIO.md) | **Front door** — send this link only |
 | [docs/RELEASE_v0.1-reference.md](./docs/RELEASE_v0.1-reference.md) | v0.1-reference release notes |
 | [docs/FAILURE_MODES_FIXED.md](./docs/FAILURE_MODES_FIXED.md) | Audit findings → fixes → proof |
-| [docs/INTERVIEW_OPENERS.md](./docs/INTERVIEW_OPENERS.md) | 30s / 3m / 10m interview scripts |
-| [docs/BLOG_HARDENING_AGENT_PAYMENTS.md](./docs/BLOG_HARDENING_AGENT_PAYMENTS.md) | Public blog draft |
-| [docs/VIDEO_SCRIPT_v0.1.md](./docs/VIDEO_SCRIPT_v0.1.md) | 5-minute video script |
-| [docs/REVIEW_REQUESTS.md](./docs/REVIEW_REQUESTS.md) | External review issue templates |
-| [docs/UPSTREAM_CONTRIBUTION.md](./docs/UPSTREAM_CONTRIBUTION.md) | One upstream PR/comment plan |
-| [docs/LINKEDIN_THREAD.md](./docs/LINKEDIN_THREAD.md) | Distribution thread |
-| [docs/PITCH_COINBASE_BASE.md](./docs/PITCH_COINBASE_BASE.md) | Coinbase/Base pitch |
-| [docs/PITCH_FIREBLOCKS.md](./docs/PITCH_FIREBLOCKS.md) | Fireblocks pitch |
-| [docs/PITCH_SAFE_RHINESTONE.md](./docs/PITCH_SAFE_RHINESTONE.md) | Safe/Rhinestone pitch |
-| [docs/PITCH_BACKEND_PLATFORM.md](./docs/PITCH_BACKEND_PLATFORM.md) | Backend/platform pitch |
 | [docs/THREE_PROJECT_SYSTEM_DIAGRAM.md](./docs/THREE_PROJECT_SYSTEM_DIAGRAM.md) | Master Mermaid diagram |
-| [docs/THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md](./docs/THREE_PROJECT_IMPROVEMENTS_AND_INTERVIEW_PREP.md) | Remediation + Q&A |
-| [docs/HIRING_PITCH.md](./docs/HIRING_PITCH.md) | One-page hiring narrative |
-| [docs/INTERVIEW_PREP.md](./docs/INTERVIEW_PREP.md) | ERC-4337 / hook deep dive |
+| [docs/UPSTREAM_CONTRIBUTION.md](./docs/UPSTREAM_CONTRIBUTION.md) | One upstream PR/comment plan |
 | [docs/SECURITY_REVIEW.md](./docs/SECURITY_REVIEW.md) | Reviewer checklist |
 | [docs/THREAT_MODEL.md](./docs/THREAT_MODEL.md) | Threats + production key custody path |
 | [docs/TEST_MATRIX.md](./docs/TEST_MATRIX.md) | Threat / test coverage map |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System design |
+| [docs/SESSION_MODEL.md](./docs/SESSION_MODEL.md) | Session key model |
+| [docs/POLICY_MODEL.md](./docs/POLICY_MODEL.md) | OPA policy model |
+| [docs/RECEIPT_SCHEMA.md](./docs/RECEIPT_SCHEMA.md) | Receipt schema |
+| [docs/DEPLOY_BASE_SEPOLIA.md](./docs/DEPLOY_BASE_SEPOLIA.md) | Base Sepolia deploy |
 
 **Siblings:** [x402-guard](https://github.com/prasanthkuna/x402-guard) · [railguard-cdp](https://github.com/prasanthkuna/railguard-cdp)
 
