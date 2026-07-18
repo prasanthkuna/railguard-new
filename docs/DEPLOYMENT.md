@@ -7,7 +7,7 @@ Last updated: 2026-07-18
 | Surface | URL |
 |---------|-----|
 | API (staging) | https://staging-railguard-s4ii.encr.app |
-| Web (Vercel) | https://coinbase-eight-xi.vercel.app |
+| Web (Vercel) | https://web-ruddy-three-69.vercel.app |
 
 ## Deploy API (Encore)
 
