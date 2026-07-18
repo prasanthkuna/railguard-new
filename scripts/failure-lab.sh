@@ -19,9 +19,11 @@ make -C "$ROOT/../stellar-payment-assurance-kit" test
 
 if command -v forge >/dev/null 2>&1; then
   echo "==> railguard-new contracts"
+  make -C "$ROOT" contracts-deps
   make -C "$ROOT" contracts-test
 elif [ -x "$HOME/.foundry/bin/forge" ]; then
   echo "==> railguard-new contracts"
+  make -C "$ROOT" contracts-deps FORGE="$HOME/.foundry/bin/forge"
   make -C "$ROOT" contracts-test FORGE="$HOME/.foundry/bin/forge"
 fi
 
