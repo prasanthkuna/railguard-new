@@ -118,10 +118,11 @@ jobs:
           node-version: '20'
       - name: Install lab dependencies
         run: |
-          cd x402-guard/packages/policy && npm ci
-          cd ../../../agent-payment-failure-lab && npm ci
+          cd x402-guard && npm ci && npm run build
+          cd ../agent-payment-failure-lab && npm ci
           cd ../gnu-taler-merchant-reliability-lab && npm ci
           cd ../stellar-payment-assurance-kit && npm ci
-          cd ../coinbase && bun install
+          ln -sfn ../x402-guard coinbase/x402-guard
+          cd coinbase && bun install
       - name: Run failure lab (unit profiles)
         run: cd railguard-new && bash scripts/failure-lab.sh
