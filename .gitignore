@@ -25,8 +25,11 @@ Thumbs.db
 .DS_Store
 __pycache__/
 
-# Generated testnet evidence (regenerate via scripts/testnet-evidence.ps1)
-evidence/
+# Generated runtime evidence at evidence root (from scripts/testnet-evidence.ps1)
+evidence/*.json
+evidence/testnet-manifest.json
+
+# Public manifests in evidence/*/ are committed intentionally
 
 # X campaign — commit generator + 2 showcase PNGs only
 assets/x-campaign/generator/node_modules/

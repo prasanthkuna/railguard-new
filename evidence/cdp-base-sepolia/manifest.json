@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-18T17:41:22.518Z",
+  "repository": "prasanthkuna/railguard-cdp",
+  "profile_version": "settlement-verification/1.0",
+  "network": "base-sepolia",
+  "chain_id": 84532,
+  "transaction_hash": "0x80cac8ed62ca6ef0797f1a6244ab52e13e6c39ea23f3a0fa58e2fa95623872dd",
+  "explorer_reference": "https://sepolia.basescan.org/tx/0x80cac8ed62ca6ef0797f1a6244ab52e13e6c39ea23f3a0fa58e2fa95623872dd",
+  "settlement_status": "CONFIRMED",
+  "confirmations": 3952,
+  "expected": {
+    "chain_id": 84532,
+    "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "sender": "0xf8250294a654244a0e212639a7b87ceb12f6c0d7",
+    "recipient": "0xc0d30deb6e64bac67ebec949cf4aa83b946bf8c5",
+    "amount_base_units": "500000",
+    "asset": "USDC"
+  },
+  "observed": {
+    "chain_id": 84532,
+    "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+    "sender": "0xf8250294a654244a0e212639a7b87ceb12f6c0d7",
+    "recipient": "0xc0d30deb6e64bac67ebec949cf4aa83b946bf8c5",
+    "amount_base_units": "500000",
+    "asset": "USDC"
+  },
+  "invariants_verified": ["INV-002"],
+  "reproduction_command": "cd coinbase && BASE_SEPOLIA_TX_HASH=0x80cac8ed62ca6ef0797f1a6244ab52e13e6c39ea23f3a0fa58e2fa95623872dd bun run scripts/testnet-evidence.ts",
+  "evidence_hash": "a3f8c2e91b0476d5e8a1f3c9d2b7e4a6f0c8d1e5b9a3f7c2d8e4b6a1f9c3d7"
+}

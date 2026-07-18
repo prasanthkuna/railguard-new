@@ -1,0 +1,15 @@
+{
+  "vulnerable_path": [
+    { "step": 1, "event": "authorize", "payment_status": "prepared", "guard_status": "reserved" },
+    { "step": 2, "event": "broadcast", "payment_status": "submitted", "guard_status": "reserved" },
+    { "step": 3, "event": "post_broadcast_crash", "payment_status": "unknown", "guard_status": "released", "bug": true },
+    { "step": 4, "event": "retry_allowed", "consequence": "budget overstated, double authorization possible" }
+  ],
+  "fixed_path": [
+    { "step": 1, "event": "authorize", "payment_status": "prepared", "guard_status": "reserved" },
+    { "step": 2, "event": "broadcast", "payment_status": "submitted", "guard_status": "frozen" },
+    { "step": 3, "event": "post_broadcast_crash", "payment_status": "unknown", "guard_status": "frozen" },
+    { "step": 4, "event": "retry_blocked", "reason": "isExecutionRetryBlocked(unknown)" },
+    { "step": 5, "event": "reconciler_confirms", "payment_status": "confirmed", "guard_status": "committed" }
+  ]
+}

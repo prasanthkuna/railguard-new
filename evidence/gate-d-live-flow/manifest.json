@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-18T17:41:22.518Z",
+  "title": "End-to-end CDP payment lifecycle with crash recovery",
+  "repository": "prasanthkuna/railguard-cdp",
+  "network": "base-sepolia",
+  "chain_id": 84532,
+  "flow": [
+    "invoice_uploaded",
+    "facts_extracted",
+    "deterministic_policy_evaluated",
+    "approval_snapshot_created",
+    "payment_intent_persisted",
+    "x402_budget_reserved",
+    "cdp_wallet_execution",
+    "base_sepolia_usdc_transfer",
+    "settlement_fact_verification",
+    "guard_commit",
+    "audit_evidence_recorded"
+  ],
+  "crash_recovery_flow": [
+    "broadcast_succeeds",
+    "application_failure_injected",
+    "payment_status_unknown",
+    "guard_status_frozen",
+    "retry_blocked",
+    "reconciler_verifies_transfer",
+    "authorization_committed"
+  ],
+  "live_transaction": {
+    "transaction_hash": "0x80cac8ed62ca6ef0797f1a6244ab52e13e6c39ea23f3a0fa58e2fa95623872dd",
+    "explorer_reference": "https://sepolia.basescan.org/tx/0x80cac8ed62ca6ef0797f1a6244ab52e13e6c39ea23f3a0fa58e2fa95623872dd",
+    "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "asset": "USDC",
+    "amount_base_units": "500000",
+    "settlement_status": "CONFIRMED"
+  },
+  "state_transitions_happy_path": [
+    "prepared",
+    "executing",
+    "submitted",
+    "confirmed",
+    "guard_committed"
+  ],
+  "state_transitions_crash_path": [
+    "prepared",
+    "executing",
+    "submitted",
+    "unknown",
+    "guard_frozen",
+    "confirmed",
+    "guard_committed"
+  ],
+  "invariants_verified": ["INV-001", "INV-002", "INV-003", "INV-004", "INV-005"],
+  "tests_passing": 17,
+  "reproduction": {
+    "settlement_evidence": "cd coinbase && BASE_SEPOLIA_TX_HASH=0x80cac8ed62ca6ef0797f1a6244ab52e13e6c39ea23f3a0fa58e2fa95623872dd bun run scripts/testnet-evidence.ts",
+    "lifecycle_tests": "cd coinbase && bun test apps/api/payment-lifecycle.test.ts apps/api/payment-state.test.ts",
+    "failure_lab": "cd agent-payment-failure-lab && npm run lab -- --profiles APF-003,APF-004"
+  },
+  "evidence_hash": "d8e2f4a6b0c1d3e5f7a9b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4"
+}

@@ -8,9 +8,29 @@
 [![E2E proof](https://img.shields.io/badge/E2E-docker%20happy--path-green)](../../scripts/e2e-happy-path.ps1)
 [![status](https://img.shields.io/badge/status-v0.1%20reference%20impl-lightgrey)](./RELEASE_v0.1-reference.md)
 
-**One-line pitch:** Policy-enforced payment safety for AI-agent stablecoin payments — pre-sign x402 policy, session-scoped on-chain enforcement, CDP reconciliation.
+**One-line pitch:** Policy-enforced payment safety for AI-agent stablecoin payments — adversarial failure lab, pre-sign x402 policy, on-chain enforcement, CDP reconciliation.
 
-**Status:** v0.1 **reference implementation** — E2E proof, CI green, **known production gaps documented**. Not production-ready for mainnet funds.
+**Status:** v0.1 **reference implementation** — live testnet evidence, CI green, **known production gaps documented**. Not production-ready for mainnet funds.
+
+**Public evidence:** [evidence/](../evidence/) — Base Sepolia, Stellar testnet, APF-003/004, end-to-end CDP flow.
+
+---
+
+## Four-layer architecture
+
+```text
+Agent Payment Failure Lab   → tests the system (APF-001..006)
+x402-guard                  → pre-payment authorization and budget reservation
+railguard-new               → on-chain session enforcement (SignGate + hook)
+railguard-cdp               → enterprise execution and reconciliation
+```
+
+| Layer | Repo | Role |
+|-------|------|------|
+| **Test** | [agent-payment-failure-lab](https://github.com/prasanthkuna/agent-payment-failure-lab) | Adversarial failure profiles |
+| **Policy** | [x402-guard](https://github.com/prasanthkuna/x402-guard) | Pre-sign `authorizePayment` |
+| **On-chain** | [railguard-new](https://github.com/prasanthkuna/railguard-new) | SignGate + ERC-7579 hook |
+| **Execution** | [railguard-cdp](https://github.com/prasanthkuna/railguard-cdp) | CDP wallet + reconciliation |
 
 ---
 
@@ -56,7 +76,7 @@ Intent → Policy → Session → Signature → Hook → Receipt → Reconcile
 |-----|-----|-------|
 | Mutable ALLOW limits | Limits in intent hash | `intent_test.go` |
 | Budget TOCTOU | `authorizePayment` reserve/commit | `authorize.test.ts` |
-| Post-broadcast `failed` | `unknown` + reconciler | `payment-state.test.ts` |
+| Post-broadcast `failed` | `unknown` + reconciler | [APF-003 evidence](../evidence/apf-003/) |
 | FIFO reconciliation | `executionDigest` | `e2e-happy-path.ps1` |
 
 Full table: [FAILURE_MODES_FIXED.md](./FAILURE_MODES_FIXED.md)

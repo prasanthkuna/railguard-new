@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-18T17:41:22.518Z",
+  "repository": "prasanthkuna/railguard-cdp",
+  "profile_version": "APF-004/1.0",
+  "title": "Successful receipt with wrong transfer facts requires reconciliation",
+  "severity": "critical",
+  "network": "base-sepolia",
+  "transaction_hash": "0x80cac8ed62ca6ef0797f1a6244ab52e13e6c39ea23f3a0fa58e2fa95623872dd",
+  "explorer_reference": "https://sepolia.basescan.org/tx/0x80cac8ed62ca6ef0797f1a6244ab52e13e6c39ea23f3a0fa58e2fa95623872dd",
+  "invariants_verified": ["INV-002"],
+  "scenarios": [
+    {
+      "name": "matching_facts",
+      "expected_recipient": "0xc0d30deb6e64bac67ebec949cf4aa83b946bf8c5",
+      "settlement_status": "CONFIRMED"
+    },
+    {
+      "name": "wrong_recipient",
+      "expected_recipient": "0x000000000000000000000000000000000000dead",
+      "settlement_status": "RECONCILIATION_REQUIRED",
+      "reason": "transfer_facts_mismatch"
+    }
+  ],
+  "reproduction_command": "cd coinbase && TESTNET_INTEGRATION=1 BASE_SEPOLIA_TX_HASH=0x80cac8ed62ca6ef0797f1a6244ab52e13e6c39ea23f3a0fa58e2fa95623872dd bun test packages/settlement/src/base-sepolia.integration.test.ts",
+  "evidence_hash": "b3705e86774080a6a629f5bef6c3f023a6ee6436daf3504579380cfde2cd56b8"
+}

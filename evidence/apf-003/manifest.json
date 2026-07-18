@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-18T17:41:25.134Z",
+  "repository": "prasanthkuna/agent-payment-failure-lab",
+  "profile_version": "APF-003/1.0",
+  "title": "Crash after broadcast keeps reservation frozen",
+  "severity": "critical",
+  "invariants_verified": ["INV-001", "INV-004"],
+  "fixtures": [
+    {
+      "fixture": "vulnerable-cdp",
+      "result": "FAIL",
+      "observed": { "payment_status": "unknown", "guard_status": "released" },
+      "bug": "Post-broadcast failure incorrectly releases authorization"
+    },
+    {
+      "fixture": "fixed-cdp",
+      "result": "PASS",
+      "observed": { "payment_status": "unknown", "guard_status": "frozen" },
+      "fix": "Reservation frozen until reconciler confirms settlement"
+    }
+  ],
+  "cdp_implementation_tests": [
+    "coinbase/apps/api/payment-lifecycle.test.ts",
+    "coinbase/apps/api/payment-state.test.ts"
+  ],
+  "reproduction_command": "cd agent-payment-failure-lab && npm run lab -- --profiles APF-003",
+  "evidence_hash": "b0bcc0cae0aece504a1a435857c5f95be4f3504b425434a6936b092b78661bf3"
+}
