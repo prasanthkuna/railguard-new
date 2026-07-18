@@ -82,3 +82,46 @@ jobs:
         run: cd x402-guard && npm ci && npm run build
       - name: SDK build and test
         run: cd railguard-new/sdk && npm ci && npm run build && npm test
+
+  failure-lab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: railguard-new
+      - uses: actions/checkout@v4
+        with:
+          repository: prasanthkuna/x402-guard
+          path: x402-guard
+      - uses: actions/checkout@v4
+        with:
+          repository: prasanthkuna/railguard-cdp
+          path: coinbase
+      - uses: actions/checkout@v4
+        with:
+          repository: prasanthkuna/agent-payment-failure-lab
+          path: agent-payment-failure-lab
+      - uses: actions/checkout@v4
+        with:
+          repository: prasanthkuna/gnu-taler-merchant-reliability-lab
+          path: gnu-taler-merchant-reliability-lab
+      - uses: actions/checkout@v4
+        with:
+          repository: prasanthkuna/stellar-payment-assurance-kit
+          path: stellar-payment-assurance-kit
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install lab dependencies
+        run: |
+          cd x402-guard/packages/policy && npm ci
+          cd ../../../agent-payment-failure-lab && npm ci
+          cd ../gnu-taler-merchant-reliability-lab && npm ci
+          cd ../stellar-payment-assurance-kit && npm ci
+          cd ../coinbase && bun install
+      - name: Run failure lab (unit profiles)
+        run: cd railguard-new && bash scripts/failure-lab.sh

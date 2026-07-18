@@ -7,6 +7,8 @@ Bug classes discovered in the three-project security audit (2026-07-11), how the
 | **Mutable ALLOW** | Get ALLOW on small caps; mutate `maxPerTransfer` / `maxTotalSpend` on same intent hash; cosign larger session | Limits included in canonical intent hash; `SaveIntent` uses `ON CONFLICT DO NOTHING` | `signgate/internal/intent/intent_test.go` (`TestHashIncludesLimits`); Go tests |
 | **x402 budget race** | Concurrent payments all read same window headroom; all pass; total spend exceeds cap | `authorizePayment`: atomic `claimReplay` + `reserveBudget` → `commitAuthorization` / `releaseAuthorization` | `x402-guard/packages/policy/src/authorize.test.ts`; `fault-injection.test.ts` |
 | **Post-broadcast lie** | CDP returns tx hash; DB/audit fails; status `failed`; retry double-pays | Track `broadcastedTxHash`; post-broadcast errors → `unknown`/`submitted`; reconciler cron | `coinbase/apps/api/payment-state.test.ts`; `execution-claim.test.ts` |
+| **Post-broadcast guard release** | Tx hash stored; guard authorization released; budget overstated | Keep guard `frozen` when `tx_hash` present; commit only after settlement verification | `coinbase/apps/api/payment-lifecycle.test.ts` |
+| **Settlement fact mismatch** | Receipt success but wrong recipient/amount confirmed | `verifyTransferFacts` → `reconciliation_required`; guard stays frozen | `packages/settlement/src/index.test.ts` |
 | **FIFO reconciliation** | Watcher commits oldest pending reservation per session, not matching execution | `ExecutionAllowed` emits `executionDigest`; store matches by digest | `signgate/internal/watcher/watcher_test.go`; `scripts/e2e-happy-path.ps1` |
 | **Reservation expiry leak** | Redis ZSET entry expires; metadata gone; aggregate budget never released | Durable ZSET member; metadata TTL 2× deadline; atomic release | `signgate/internal/reservation/reservation_test.go` |
 | **Client-trusted reserve** | Caller supplies `amountAtomic` / `intentHash` not bound to session | `GetSessionReserveSnapshot` validates agent, intent, limits, validity | `signgate` API + store tests |
@@ -29,9 +31,14 @@ bun test packages/policy/src/authorize.test.ts packages/policy/src/fault-injecti
 cd railguard-new/signgate
 go test ./internal/watcher ./internal/intent ./internal/reservation -v
 
-# CDP payment state machine
+# CDP payment state machine + lifecycle adversarial profiles
 cd coinbase
-bun test apps/api/payment-state.test.ts apps/api/execution-claim.test.ts
+bun test apps/api/payment-state.test.ts apps/api/payment-lifecycle.test.ts apps/api/execution-claim.test.ts
+bun test packages/settlement/src/index.test.ts
+
+# Portable failure lab (all three repos)
+cd ../railguard-new
+make failure-lab
 
 # Full stack
 cd railguard-new

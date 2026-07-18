@@ -25,6 +25,9 @@ Thumbs.db
 .DS_Store
 __pycache__/
 
+# Generated testnet evidence (regenerate via scripts/testnet-evidence.ps1)
+evidence/
+
 # X campaign — commit generator + 2 showcase PNGs only
 assets/x-campaign/generator/node_modules/
 assets/x-campaign/generator/slides-out/
